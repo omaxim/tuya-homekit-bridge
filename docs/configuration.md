@@ -11,6 +11,7 @@ The bridge reads one JSON file (`-config`, default `config.json`).
 | `storage` | `"db"` | Directory where HomeKit pairing data is stored. Must be persistent and private. |
 | `poll_interval` | `"10s"` | How often device state is read. |
 | `interfaces` | all | Restrict HomeKit advertising to these interfaces, e.g. `["br-lan"]`. |
+| `web` | off | Optional local web UI, see [web-ui.md](web-ui.md). |
 | `devices` | – | List of devices (below). |
 
 ## Device
@@ -37,6 +38,7 @@ accessories at the end to keep existing automations working.
 | `state` | The switch shows **on** when *all* of these DPs have these values. |
 | `on` | DPs written when the switch is turned on. |
 | `off` | DPs written when the switch is turned off. |
+| `on_then` / `off_then` | Optional second write after `on` / `off`. Some devices ignore certain DPs in the same command – e.g. a heater that ignores its power level while it is off, so `"on": {"1": true}, "on_then": {"4": "low"}` is needed to start at low power. |
 
 Writing several DPs at once lets one switch express a combined action, e.g. "turn on
 *and* set high power".

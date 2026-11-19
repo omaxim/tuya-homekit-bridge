@@ -3,6 +3,12 @@
   "pin": "12345678",
   "storage": "db",
   "poll_interval": "10s",
+  "web": {
+    "listen": ":8080",
+    "password": "REPLACE_WITH_SHARED_PASSWORD",
+    "title": "Heating",
+    "lang": "en"
+  },
   "devices": [
     {
       "name": "Heater",
@@ -15,7 +21,8 @@
           "name": "Heater",
           "state": { "1": true },
           "on": { "2": 50, "1": true },
-          "off": { "1": false, "4": "low" }
+          "on_then": { "4": "low" },
+          "off": { "1": false }
         },
         {
           "type": "switch",

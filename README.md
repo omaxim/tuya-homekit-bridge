@@ -23,6 +23,8 @@ Tuya device you can describe as switches and temperature sensors.
 - **Small and portable** – one static Go binary (~2.4 MB compressed), runs on macOS,
   Linux, Raspberry Pi and OpenWrt routers. An OpenWrt recipe that runs the bridge from
   RAM on routers with only 8 MB of flash is included.
+- **Local web UI (optional)** – a password‑protected page with on/off buttons for
+  colleagues or family members without Apple devices, see [docs/web-ui.md](docs/web-ui.md).
 - **Multiple accessories per device, multiple devices per bridge.**
 
 ## Requirements
@@ -64,6 +66,7 @@ Then in the Home app: **+ → Add Accessory → More options…**, pick the brid
   "pin": "12345678",
   "storage": "db",
   "poll_interval": "10s",
+  "web": { "listen": ":8080", "password": "choose-a-password", "lang": "en" },
   "devices": [
     {
       "name": "Heater",
@@ -74,7 +77,8 @@ Then in the Home app: **+ → Add Accessory → More options…**, pick the brid
         { "type": "switch", "name": "Heater",
           "state": { "1": true },
           "on":    { "2": 50, "1": true },
-          "off":   { "1": false, "4": "low" } },
+          "on_then": { "4": "low" },
+          "off":   { "1": false } },
         { "type": "switch", "name": "Heater boost",
           "state": { "1": true, "4": "high" },
           "on":    { "2": 50, "4": "high", "1": true },

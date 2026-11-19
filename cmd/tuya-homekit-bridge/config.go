@@ -12,12 +12,21 @@ import (
 
 // Config is the bridge configuration file (JSON).
 type Config struct {
-	Name         string   `json:"name"`          // bridge name shown in the Home app
-	Pin          string   `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
-	Storage      string   `json:"storage"`       // directory for pairing data (must persist)
-	PollInterval Duration `json:"poll_interval"` // how often to read device state, e.g. "10s"
-	Interfaces   []string `json:"interfaces"`    // optional: network interfaces to advertise on
-	Devices      []Device `json:"devices"`
+	Name         string     `json:"name"`          // bridge name shown in the Home app
+	Pin          string     `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
+	Storage      string     `json:"storage"`       // directory for pairing data (must persist)
+	PollInterval Duration   `json:"poll_interval"` // how often to read device state, e.g. "10s"
+	Interfaces   []string   `json:"interfaces"`    // optional: network interfaces to advertise on
+	Web          *WebConfig `json:"web"`           // optional local web UI
+	Devices      []Device   `json:"devices"`
+}
+
+// WebConfig enables a small password-protected web UI for the local network.
+type WebConfig struct {
+	Listen   string `json:"listen"`   // e.g. ":8080"
+	Password string `json:"password"` // shared password; empty = no login (not recommended)
+	Title    string `json:"title"`    // page title (defaults to the bridge name)
+	Lang     string `json:"lang"`     // "en" (default) or "cs"
 }
 
 // Device is one Tuya device and the HomeKit accessories it is exposed as.
@@ -40,8 +49,12 @@ type Accessory struct {
 	State tuya.DPS `json:"state"` // switch is "on" when all of these DPs match
 	On    tuya.DPS `json:"on"`    // DPs written when switched on
 	Off   tuya.DPS `json:"off"`   // DPs written when switched off
-	DP    string   `json:"dp"`
-	Scale float64  `json:"scale"`
+	// Optional second write after On/Off, for devices that ignore some DPs
+	// in the same command (e.g. a heater that ignores its power level while off).
+	OnThen  tuya.DPS `json:"on_then"`
+	OffThen tuya.DPS `json:"off_then"`
+	DP      string   `json:"dp"`
+	Scale   float64  `json:"scale"`
 }
 
 // Rule re-applies Set whenever all DPs in When match and Set is not already in effect.

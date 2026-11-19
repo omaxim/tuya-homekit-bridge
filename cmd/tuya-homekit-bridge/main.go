@@ -74,6 +74,7 @@ func main() {
 	for _, d := range devs {
 		go d.poll(ctx, cfg.PollInterval.Duration)
 	}
+	startWeb(cfg, devs)
 
 	log.Printf("tuya-homekit-bridge %s: %q with %d accessories, setup code %s-%s-%s",
 		version, cfg.Name, len(accs), cfg.Pin[:3], cfg.Pin[3:5], cfg.Pin[5:])
@@ -108,6 +109,15 @@ type device struct {
 
 	mu       sync.Mutex
 	updaters []func(tuya.DPS)
+	last     tuya.DPS
+	lastAt   time.Time
+}
+
+// snapshot returns the last known data points and when they were read.
+func (d *device) snapshot() (tuya.DPS, time.Time) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.last, d.lastAt
 }
 
 func newDevice(c Device) *device {
@@ -144,12 +154,18 @@ func (d *device) status() (tuya.DPS, error) {
 	return dps, err
 }
 
-func (d *device) set(v tuya.DPS) {
-	if err := d.dev.Set(v); err != nil {
-		log.Printf("%s: set %v failed: %v", d.cfg.Name, v, err)
-		return
+// set writes one or more DP groups in order, then refreshes state.
+func (d *device) set(steps ...tuya.DPS) {
+	for _, v := range steps {
+		if len(v) == 0 {
+			continue
+		}
+		if err := d.dev.Set(v); err != nil {
+			log.Printf("%s: set %v failed: %v", d.cfg.Name, v, err)
+			break
+		}
+		log.Printf("%s: set %v", d.cfg.Name, v)
 	}
-	log.Printf("%s: set %v", d.cfg.Name, v)
 	d.refresh()
 }
 
@@ -161,6 +177,7 @@ func (d *device) refresh() {
 	}
 	d.mu.Lock()
 	ups := d.updaters
+	d.last, d.lastAt = dps, time.Now()
 	d.mu.Unlock()
 	for _, u := range ups {
 		u(dps)
@@ -205,9 +222,9 @@ func (d *device) buildAccessories() []*accessory.A {
 			a := a
 			sw.Switch.On.OnValueRemoteUpdate(func(on bool) {
 				if on {
-					d.set(a.On)
+					d.set(a.On, a.OnThen)
 				} else {
-					d.set(a.Off)
+					d.set(a.Off, a.OffThen)
 				}
 			})
 			d.onUpdate(func(dps tuya.DPS) { sw.Switch.On.SetValue(matches(dps, a.State)) })

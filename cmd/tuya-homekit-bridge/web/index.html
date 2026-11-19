@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{.Title}}</title>
+<style>
+:root{--bg:#f5f5f2;--card:#fff;--fg:#1d1d1b;--muted:#6b6b66;--line:#e2e2dc;--on:#d9480f;--on-bg:#fff1e8;--btn:#1d1d1b;--btn-fg:#fff;--err:#c92a2a}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1f1f1d;--fg:#f0f0ea;--muted:#9a9a93;--line:#33332f;--on:#ff8a4c;--on-bg:#2b1d14;--btn:#f0f0ea;--btn-fg:#141413}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:480px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.card.on{border-color:var(--on);background:var(--on-bg)}
+.name{flex:1;font-weight:600}
+.state{font-size:14px;color:var(--muted);font-weight:400}
+.card.on .state{color:var(--on)}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 18px;min-width:104px;background:var(--btn);color:var(--btn-fg);cursor:pointer}
+button:disabled{opacity:.5}
+.temp{font-size:22px;font-weight:600}
+form.login{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+input{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);margin:8px 0 12px}
+.err{color:var(--err);font-size:14px}
+.foot{margin-top:20px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+.foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<h1>{{.Title}}</h1>
+{{if not .LoggedIn}}
+<p class="sub" data-t="loginHint"></p>
+<form class="login" method="post" action="/login">
+  <label for="pw" data-t="password"></label>
+  <input id="pw" name="password" type="password" autocomplete="current-password" autofocus required>
+  {{if .Error}}<p class="err" data-t="wrong"></p>{{end}}
+  <button type="submit" data-t="login"></button>
+</form>
+{{else}}
+<p class="sub" id="updated">&nbsp;</p>
+<div id="list"></div>
+<div class="foot"><span data-t="lanOnly"></span>{{if .HasPass}}<a href="/logout" data-t="logout"></a>{{end}}</div>
+{{end}}
+</main>
+<script>
+const T = {
+  en: {loginHint:"Enter the password to control the devices.", password:"Password", wrong:"Wrong password.", login:"Log in",
+       on:"On", off:"Off", turnOn:"Turn on", turnOff:"Turn off", offline:"Not responding", updated:"Updated", ago:"s ago",
+       lanOnly:"Local network only", logout:"Log out", failed:"Could not change the device. Try again."},
+  cs: {loginHint:"Pro ovládání zadej heslo.", password:"Heslo", wrong:"Špatné heslo.", login:"Přihlásit",
+       on:"Zapnuto", off:"Vypnuto", turnOn:"Zapnout", turnOff:"Vypnout", offline:"Neodpovídá", updated:"Aktualizováno před", ago:"s",
+       lanOnly:"Jen v místní síti", logout:"Odhlásit", failed:"Zařízení se nepodařilo přepnout. Zkus to znovu."}
+}[document.documentElement.lang] || null;
+const t = k => (T || {})[k] || k;
+document.querySelectorAll("[data-t]").forEach(e => e.textContent = t(e.dataset.t));
+
+const list = document.getElementById("list");
+let lastAt = null, busy = false;
+
+function render(items) {
+  list.replaceChildren();
+  for (const a of items) {
+    const card = document.createElement("div");
+    card.className = "card" + (a.on ? " on" : "");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = a.name;
+    const st = document.createElement("div");
+    st.className = "state";
+    card.append(name);
+    if (a.type === "switch") {
+      st.textContent = !a.online ? t("offline") : a.on ? t("on") : t("off");
+      name.append(st);
+      const b = document.createElement("button");
+      b.textContent = a.on ? t("turnOff") : t("turnOn");
+      b.disabled = !a.online || busy;
+      b.onclick = () => toggle(a, !a.on);
+      card.append(b);
+    } else if (a.type === "temperature") {
+      const v = document.createElement("div");
+      v.className = "temp";
+      v.textContent = a.value != null ? a.value.toFixed(1).replace(/\.0$/, "") + " °C" : "–";
+      card.append(v);
+    }
+    list.append(card);
+    if (a.updated_at) lastAt = new Date(a.updated_at);
+  }
+}
+
+async function load() {
+  const r = await fetch("/api/state", {cache: "no-store"});
+  if (r.status === 401) return location.reload();
+  if (r.ok) render(await r.json());
+}
+
+async function toggle(a, on) {
+  busy = true; load();
+  const body = new URLSearchParams({device: a.device, index: a.index, on});
+  const r = await fetch("/api/switch", {method: "POST", body});
+  busy = false;
+  if (r.ok) render(await r.json()); else { alert(t("failed")); load(); }
+}
+
+function tick() {
+  const u = document.getElementById("updated");
+  if (u && lastAt) u.textContent = t("updated") + " " + Math.max(0, Math.round((Date.now() - lastAt) / 1000)) + " " + t("ago");
+}
+
+if (list) { load(); setInterval(load, 5000); setInterval(tick, 1000); }
+</script>
+</body>
+</html>

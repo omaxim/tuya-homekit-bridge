@@ -30,7 +30,7 @@ DP depends on the product. To map them:
 | 1 | Power | `true` / `false` |
 | 2 | Target temperature (°C) | integer, max 50 |
 | 3 | Current temperature at the heater (°C) | integer, read‑only |
-| 4 | Power level | `"low"` / `"high"` |
+| 4 | Power level | `"low"` / `"high"` – ignored while the heater is off, use `on_then` |
 | 7 | Child lock | `true` / `false` |
 | 10 | Display light | `true` / `false` |
 | 19 | Countdown timer | `"cancel"`, `"1h"` … `"6h"` |
