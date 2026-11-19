@@ -33,8 +33,11 @@ Trade‑off: after a power cut the bridge starts once the router is online (usua
 a minute). If the router has enough flash, put the binary at `/usr/bin/tuya-homekit-bridge`
 (e.g. via the image's `files/` tree) and it is used directly, no download needed.
 
-Memory: the UPX‑compressed binary needs ~2.5 MB in `/tmp` plus ~15 MB while running;
-64 MB of RAM is enough.
+Memory: prefer the **uncompressed** asset (`…-mips-softfloat`, ~10 MB in `/tmp`). Its code
+pages are mapped directly from the RAM disk, whereas the UPX variant (`.upx`, 2.4 MB
+download) is unpacked into additional anonymous memory. Measured on an Archer C6 v2
+(128 MB): uncompressed + `GOGC=50 GOMEMLIMIT=12MiB` (set by the init script) uses roughly 5 MB less RAM
+than the UPX build with default GC settings.
 
 ## Build
 

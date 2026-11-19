@@ -27,7 +27,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin bin || true
           mkdir -p /tmp/mirror/"$GITHUB_REF_NAME"
-          cp dist/*.upx dist/sha256sums.txt /tmp/mirror/"$GITHUB_REF_NAME"/
+          cp dist/*-mips*-softfloat dist/*.upx dist/sha256sums.txt /tmp/mirror/"$GITHUB_REF_NAME"/
           if git show-ref --verify --quiet refs/remotes/origin/bin; then git checkout -B bin origin/bin; else git checkout --orphan bin && git rm -rqf .; fi
           cp -R /tmp/mirror/. .
           git add "$GITHUB_REF_NAME"
