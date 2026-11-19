@@ -23,7 +23,9 @@ The bridge binary is ~10 MB (≈2.4 MB compressed). Routers with 8 MB of flash (
 TP‑Link Archer C6 v2 EU) have only a few hundred KB free after OpenWrt itself, so the
 image does **not** contain the binary. Instead, `/usr/sbin/tuya-homekit-bridge-run`:
 
-1. downloads the pinned release asset into `/tmp` (RAM) after boot,
+1. syncs the clock (routers have no RTC; TLS fails until it is right), then downloads
+   the pinned release asset into `/tmp` (RAM), trying each URL in `BRIDGE_URL` in turn
+   (GitHub release, then the `bin` branch via raw.githubusercontent.com and jsDelivr),
 2. verifies its SHA‑256 against the value baked into the image,
 3. starts it, and retries every 30 s until the internet and the clock are up.
 
@@ -56,6 +58,13 @@ Bridge config on the router should use:
 
 `BRIDGE_SHA256` must match the asset in `BRIDGE_URL`; every release publishes a
 `sha256sums.txt`.
+
+### WAN VLAN on boards with a built-in switch
+
+On swconfig boards (e.g. Archer C6 v2) the WAN port is itself a switch VLAN
+(`eth0.2`). With `WAN_VLAN` set, the build re-tags that switch VLAN (WAN port and CPU
+port tagged) and uses `eth0.<WAN_VLAN>` for WAN, instead of stacking a second VLAN tag.
+On DSA boards an 802.1Q device on the WAN port is created.
 
 ### Example: O2 / CETIN line in Czechia
 

@@ -19,3 +19,17 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+      # Mirror the small router builds to the "bin" branch so they can also be fetched
+      # from raw.githubusercontent.com / jsDelivr (some networks cannot reach github.com).
+      - name: Mirror router binaries to bin branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin bin || true
+          mkdir -p /tmp/mirror/"$GITHUB_REF_NAME"
+          cp dist/*.upx dist/sha256sums.txt /tmp/mirror/"$GITHUB_REF_NAME"/
+          if git show-ref --verify --quiet refs/remotes/origin/bin; then git checkout -B bin origin/bin; else git checkout --orphan bin && git rm -rqf .; fi
+          cp -R /tmp/mirror/. .
+          git add "$GITHUB_REF_NAME"
+          git commit -m "Router binaries for $GITHUB_REF_NAME"
+          git push origin bin
