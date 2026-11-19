@@ -11,6 +11,12 @@ bridge. This recipe builds a complete OpenWrt image that contains:
 Everything is part of the image defaults, so pressing the router's reset button brings
 back **this** configuration instead of a blank OpenWrt.
 
+Optional extras (see `build.example.env`): a second Wi‑Fi network on every radio
+(`WIFI2_*`, e.g. the SSID and key printed on the router's label so the label stays
+valid), a root/web‑UI password (`ROOT_PASSWORD`), DNS aliases such as the vendor's
+`tplinkwifi.net`, and the LuCI web interface (`luci-light`, fits on 8 MB devices when the
+bridge runs from RAM).
+
 ## Small flash? Run the bridge from RAM
 
 The bridge binary is ~10 MB (≈2.4 MB compressed). Routers with 8 MB of flash (e.g.

@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 ENV_FILE=${1:-build.env}
 [ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE (copy build.example.env)"; exit 1; }
 # shellcheck disable=SC1090
-. "./$ENV_FILE"
+case "$ENV_FILE" in /*) . "$ENV_FILE" ;; *) . "./$ENV_FILE" ;; esac
 
 : "${RELEASE:?}" "${TARGET:?}" "${PROFILE:?}" "${LAN_IP:?}" "${BRIDGE_CONFIG:?}" "${BRIDGE_URL:?}" "${BRIDGE_SHA256:?set BRIDGE_SHA256 (see sha256sums.txt of the release)}"
 
@@ -95,6 +95,30 @@ if [ -s /etc/dropbear/authorized_keys ]; then
 	chmod 600 /etc/dropbear/authorized_keys
 	uci set dropbear.@dropbear[0].PasswordAuth='off'
 	uci set dropbear.@dropbear[0].RootPasswordAuth='off'
+fi
+
+# Optional second network on every radio, e.g. the SSID printed on the router's
+# label, so the label stays valid. 5 GHz radios get WIFI2_SSID_5G (default: <ssid>_5G).
+WIFI2_SSID=$(q "${WIFI2_SSID:-}")
+if [ -n "\$WIFI2_SSID" ]; then
+	for r in \$(uci show wireless | sed -n 's/^wireless\.\([^.=]*\)=wifi-device$/\1/p'); do
+		ssid="\$WIFI2_SSID"
+		[ "\$(uci -q get wireless.\$r.band)" = 5g ] && ssid=$(q "${WIFI2_SSID_5G:-${WIFI2_SSID}_5G}")
+		i=secondary_\$r
+		uci set wireless.\$i=wifi-iface
+		uci set wireless.\$i.device=\$r
+		uci set wireless.\$i.mode='ap'
+		uci set wireless.\$i.network='lan'
+		uci set wireless.\$i.ssid="\$ssid"
+		uci set wireless.\$i.encryption='psk2'
+		uci set wireless.\$i.key=$(q "${WIFI2_KEY:-}")
+	done
+fi
+
+# Optional root password (web UI login). Without it OpenWrt asks you to set one.
+ROOT_PASSWORD=$(q "${ROOT_PASSWORD:-}")
+if [ -n "\$ROOT_PASSWORD" ]; then
+	printf '%s\n%s\n' "\$ROOT_PASSWORD" "\$ROOT_PASSWORD" | passwd root >/dev/null 2>&1
 fi
 
 chmod 700 /etc/tuya-homekit-bridge
