@@ -1,0 +1,38 @@
+{
+  "name": "Heater Bridge",
+  "pin": "12345678",
+  "storage": "db",
+  "poll_interval": "10s",
+  "devices": [
+    {
+      "name": "Heater",
+      "id": "REPLACE_WITH_DEVICE_ID",
+      "ip": "",
+      "local_key": "REPLACE_WITH_LOCAL_KEY",
+      "accessories": [
+        {
+          "type": "switch",
+          "name": "Heater",
+          "state": { "1": true },
+          "on": { "2": 50, "1": true },
+          "off": { "1": false, "4": "low" }
+        },
+        {
+          "type": "switch",
+          "name": "Heater boost",
+          "state": { "1": true, "4": "high" },
+          "on": { "2": 50, "4": "high", "1": true },
+          "off": { "4": "low" }
+        },
+        {
+          "type": "temperature",
+          "name": "Heater internal sensor",
+          "dp": "3"
+        }
+      ],
+      "enforce": [
+        { "when": { "1": true }, "set": { "2": 50 } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Plug Bridge",
+  "pin": "12345678",
+  "storage": "db",
+  "devices": [
+    {
+      "name": "Desk plug",
+      "id": "REPLACE_WITH_DEVICE_ID",
+      "local_key": "REPLACE_WITH_LOCAL_KEY",
+      "accessories": [
+        {
+          "type": "switch",
+          "name": "Desk lamp",
+          "state": { "1": true },
+          "on": { "1": true },
+          "off": { "1": false }
+        }
+      ]
+    }
+  ]
+}

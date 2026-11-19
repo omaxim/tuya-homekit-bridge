@@ -1,0 +1,15 @@
+# Secrets and runtime state – never commit these
+config.json
+*.local.json
+db/
+devices.json
+tuya_creds.json
+qr.png
+*.env
+!openwrt/build.example.env
+
+# Build output
+/dist/
+/openwrt/out/
+/openwrt/work/
+/tuya-homekit-bridge

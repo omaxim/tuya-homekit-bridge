@@ -1,0 +1,33 @@
+#!/bin/sh
+# Runs tuya-homekit-bridge from RAM.
+#
+# Routers with 8 MB flash have no room for the ~2.4 MB binary, so it is
+# downloaded to /tmp (RAM) at boot and verified against a pinned SHA-256
+# before it is executed. Settings: /etc/tuya-homekit-bridge/loader.conf
+#   URL=https://github.com/<owner>/tuya-homekit-bridge/releases/download/<tag>/<asset>
+#   SHA256=<sha256 of that asset>
+# If the binary is installed on flash at /usr/bin/tuya-homekit-bridge, it is used instead.
+
+CONF=/etc/tuya-homekit-bridge
+BIN=/tmp/tuya-homekit-bridge
+log() { logger -t tuya-homekit-bridge "$*"; }
+
+if [ -x /usr/bin/tuya-homekit-bridge ]; then
+	BIN=/usr/bin/tuya-homekit-bridge
+else
+	. "$CONF/loader.conf"
+	verify() { [ -n "$SHA256" ] && [ "$(sha256sum "$1" 2>/dev/null | cut -d' ' -f1)" = "$SHA256" ]; }
+	until verify "$BIN"; do
+		rm -f "$BIN" "$BIN.part"
+		if uclient-fetch -q -T 30 -O "$BIN.part" "$URL" && verify "$BIN.part"; then
+			chmod 755 "$BIN.part" && mv "$BIN.part" "$BIN"
+			log "downloaded and verified $URL"
+		else
+			log "download or checksum failed (no internet yet / clock not synced?), retrying in 30s"
+			rm -f "$BIN.part"
+			sleep 30
+		fi
+	done
+fi
+
+exec "$BIN" -config "$CONF/config.json"
