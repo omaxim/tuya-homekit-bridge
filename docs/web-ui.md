@@ -21,8 +21,32 @@ sync with the Home app (both talk to the same bridge).
 | `title` | Page title, defaults to the bridge `name`. |
 | `lang` | `en` (default) or `cs`. Translations are welcome. |
 
-Open `http://<bridge-ip>:8080`. On OpenWrt you can add a friendly name with
-`LAN_ALIASES="heating"` in `build.env` and open `http://heating:8080`.
+Open `http://<bridge-ip>:8080`.
+
+### Friendly URL on OpenWrt (no port number)
+
+Give the router a second LAN address for the web UI, keep LuCI on the first one, and
+add a host name – put this into a file referenced by `EXTRA_UCI_DEFAULTS` in
+`build.env` and set `"listen": "192.168.1.2:80"`:
+
+```sh
+uci set network.lan_web=interface
+uci set network.lan_web.proto='static'
+uci set network.lan_web.device='br-lan'
+uci set network.lan_web.ipaddr='192.168.1.2'
+uci set network.lan_web.netmask='255.255.255.0'
+uci add_list firewall.@zone[0].network='lan_web'
+uci -q delete uhttpd.main.listen_http
+uci add_list uhttpd.main.listen_http='192.168.1.1:80'
+uci add_list uhttpd.main.listen_http='[::]:80'
+# single-label names need a hosts entry
+uci add dhcp domain >/dev/null
+uci set dhcp.@domain[-1].name='heating'
+uci set dhcp.@domain[-1].ip='192.168.1.2'
+```
+
+Then `http://heating` opens the heating page and the router's own UI stays on
+`http://192.168.1.1`.
 
 ## Security
 

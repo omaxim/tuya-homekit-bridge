@@ -146,6 +146,12 @@ if [ -n "\$ROOT_PASSWORD" ]; then
 	printf '%s\n%s\n' "\$ROOT_PASSWORD" "\$ROOT_PASSWORD" | passwd root >/dev/null 2>&1
 fi
 
+EOF
+# optional site-specific uci commands
+if [ -n "${EXTRA_UCI_DEFAULTS:-}" ]; then
+	{ echo; echo "# --- extra ($EXTRA_UCI_DEFAULTS)"; cat "${EXTRA_UCI_DEFAULTS/#\~/$HOME}"; echo; } >> "$S"
+fi
+cat >> "$S" <<EOF
 chmod 700 /etc/tuya-homekit-bridge
 chmod 600 /etc/tuya-homekit-bridge/config.json
 [ -d /etc/tuya-homekit-bridge/db ] && chmod -R go-rwx /etc/tuya-homekit-bridge/db
