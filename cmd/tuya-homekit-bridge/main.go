@@ -59,6 +59,15 @@ func main() {
 		accs = append(accs, d.buildAccessories()...)
 	}
 
+	var thermo *thermostat
+	if cfg.Thermostat != nil {
+		if err := os.MkdirAll(cfg.Storage, 0o700); err != nil {
+			log.Fatal(err)
+		}
+		thermo = newThermostat(cfg.Thermostat, devs[cfg.Thermostat.Device], cfg.Storage)
+		accs = append(accs, thermo.buildAccessories()...)
+	}
+
 	server, err := hap.NewServer(hap.NewFsStore(cfg.Storage), bridge.A, accs...)
 	if err != nil {
 		log.Fatal(err)
@@ -74,7 +83,16 @@ func main() {
 	for _, d := range devs {
 		go d.poll(ctx, cfg.PollInterval.Duration)
 	}
-	startWeb(cfg, devs)
+	if thermo != nil {
+		stop := make(chan struct{})
+		go func() { <-ctx.Done(); close(stop) }()
+		go func() {
+			time.Sleep(15 * time.Second) // let devices be found first
+			thermo.evaluate("startup")
+			thermo.run(stop)
+		}()
+	}
+	startWeb(cfg, devs, thermo)
 
 	log.Printf("tuya-homekit-bridge %s: %q with %d accessories, setup code %s-%s-%s",
 		version, cfg.Name, len(accs), cfg.Pin[:3], cfg.Pin[3:5], cfg.Pin[5:])

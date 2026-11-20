@@ -21,6 +21,15 @@ h1{font-size:22px;margin:0 0 4px}
 button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 18px;min-width:104px;background:var(--btn);color:var(--btn-fg);cursor:pointer}
 button:disabled{opacity:.5}
 .temp{font-size:22px;font-weight:600}
+.thermo{display:block}
+.thermo .row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.big{font-size:40px;font-weight:700;line-height:1;white-space:nowrap}
+.target{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;margin-top:4px;text-align:center}
+.target b{font-size:20px;min-width:76px;text-align:center;white-space:nowrap;display:block}
+.target button{min-width:72px;padding:10px 0;font-size:24px}
+.meta{font-size:14px;color:var(--muted);margin-top:10px}
+.warn{color:var(--err)}
+.mode{margin-top:12px;width:100%}
 form.login{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 input{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);margin:8px 0 12px}
 .err{color:var(--err);font-size:14px}
@@ -47,10 +56,16 @@ input{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-r
 </main>
 <script>
 const T = {
-  en: {loginHint:"Enter the password to control the devices.", password:"Password", wrong:"Wrong password.", login:"Log in",
+  en: {room:"Room", target:"Target", heating:"Heating", heatingBoost:"Heating at full power", idle:"Not heating",
+       thermoOff:"Thermostat off", turnThermoOn:"Turn thermostat on", turnThermoOff:"Turn thermostat off",
+       noTemp:"No room temperature received – heating is off for safety.", tempAge:"Room temperature from", minAgo:"min ago",
+       loginHint:"Enter the password to control the devices.", password:"Password", wrong:"Wrong password.", login:"Log in",
        on:"On", off:"Off", turnOn:"Turn on", turnOff:"Turn off", offline:"Not responding", updated:"Updated", ago:"s ago",
        lanOnly:"Local network only", logout:"Log out", failed:"Could not change the device. Try again."},
-  cs: {loginHint:"Pro ovládání zadej heslo.", password:"Heslo", wrong:"Špatné heslo.", login:"Přihlásit",
+  cs: {room:"Místnost", target:"Cíl", heating:"Topí", heatingBoost:"Topí naplno", idle:"Netopí",
+       thermoOff:"Termostat vypnutý", turnThermoOn:"Zapnout termostat", turnThermoOff:"Vypnout termostat",
+       noTemp:"Nepřišla teplota z místnosti – topení je z bezpečnostních důvodů vypnuté.", tempAge:"Teplota z místnosti před", minAgo:"min",
+       loginHint:"Pro ovládání zadej heslo.", password:"Heslo", wrong:"Špatné heslo.", login:"Přihlásit",
        on:"Zapnuto", off:"Vypnuto", turnOn:"Zapnout", turnOff:"Vypnout", offline:"Neodpovídá", updated:"Aktualizováno před", ago:"s",
        lanOnly:"Jen v místní síti", logout:"Odhlásit", failed:"Zařízení se nepodařilo přepnout. Zkus to znovu."}
 }[document.documentElement.lang] || null;
@@ -60,9 +75,39 @@ document.querySelectorAll("[data-t]").forEach(e => e.textContent = t(e.dataset.t
 const list = document.getElementById("list");
 let lastAt = null, busy = false;
 
-function render(items) {
+const fmt = v => { const s = v.toFixed(1).replace(/\.0$/, ""); return (document.documentElement.lang === "cs" ? s.replace(".", ",") : s) + " °C"; };
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function renderThermo(th) {
+  const card = el("div", "card thermo" + (th.heating ? " on" : ""));
+  const row = el("div", "row");
+  const left = el("div");
+  left.append(el("div", "state", t("room")), el("div", "big", th.temperature != null ? fmt(th.temperature) : "–"));
+  const tg = el("div", "target");
+  const minus = el("button", "", "−"), plus = el("button", "", "+");
+  minus.disabled = busy || th.target <= th.min; plus.disabled = busy || th.target >= th.max;
+  minus.onclick = () => thermo({target: th.target - 0.5});
+  plus.onclick = () => thermo({target: th.target + 0.5});
+  const val = el("div"); val.append(el("div", "state", t("target")), el("b", "", fmt(th.target)));
+  tg.append(minus, val, plus);
+  row.append(left, tg);
+  const meta = el("div", "meta");
+  if (!th.enabled) meta.textContent = t("thermoOff");
+  else if (!th.fresh) { meta.textContent = t("noTemp"); meta.classList.add("warn"); }
+  else meta.textContent = (th.stage === "boost" ? t("heatingBoost") : th.heating ? t("heating") : t("idle")) +
+       (th.temperature_age_s != null ? " · " + t("tempAge") + " " + Math.round(th.temperature_age_s / 60) + " " + t("minAgo") : "");
+  const mode = el("button", "mode", th.enabled ? t("turnThermoOff") : t("turnThermoOn"));
+  mode.disabled = busy;
+  mode.onclick = () => thermo({enabled: !th.enabled});
+  card.append(row, meta, mode);
+  list.append(card);
+}
+
+function render(data) {
   list.replaceChildren();
-  for (const a of items) {
+  if (data.thermostat) renderThermo(data.thermostat);
+  for (const a of data.accessories || []) {
     const card = document.createElement("div");
     card.className = "card" + (a.on ? " on" : "");
     const name = document.createElement("div");
@@ -94,6 +139,13 @@ async function load() {
   const r = await fetch("/api/state", {cache: "no-store"});
   if (r.status === 401) return location.reload();
   if (r.ok) render(await r.json());
+}
+
+async function thermo(params) {
+  busy = true;
+  const r = await fetch("/api/thermostat", {method: "POST", body: new URLSearchParams(params)});
+  busy = false;
+  if (r.ok) render(await r.json()); else { alert(t("failed")); load(); }
 }
 
 async function toggle(a, on) {

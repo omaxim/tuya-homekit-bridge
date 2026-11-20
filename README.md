@@ -23,6 +23,10 @@ Tuya device you can describe as switches and temperature sensors.
 - **Small and portable** – one static Go binary (~2.4 MB compressed), runs on macOS,
   Linux, Raspberry Pi and OpenWrt routers. An OpenWrt recipe that runs the bridge from
   RAM on routers with only 8 MB of flash is included.
+- **Thermostat (optional)** – regulates a device in stages (off / heat / boost) from a
+  room temperature pushed over HTTP, e.g. by a Home automation that reads a HomePod's
+  sensor. Real thermostat with a slider in the Home app, failsafe when the temperature
+  stops arriving, see [docs/homepod-thermostat.md](docs/homepod-thermostat.md).
 - **Local web UI (optional)** – a password‑protected page with on/off buttons for
   colleagues or family members without Apple devices, see [docs/web-ui.md](docs/web-ui.md).
 - **Multiple accessories per device, multiple devices per bridge.**
@@ -96,8 +100,9 @@ DP of your device does.
 
 ## Recipes
 
-- [Room thermostat with a HomePod sensor](docs/homepod-thermostat.md) – staged
-  off/low/high control of a heater using Home app automations.
+- [Room thermostat with a HomePod sensor](docs/homepod-thermostat.md) – the HomePod
+  sends the room temperature, the bridge regulates off/low/high (or simple threshold
+  automations).
 - [Run on an OpenWrt router](docs/openwrt.md) – including 8 MB flash devices
   (bridge downloaded to RAM at boot, verified by SHA‑256), WireGuard for remote admin.
 - [Run as a service on Linux / Raspberry Pi / macOS](docs/running-as-a-service.md).

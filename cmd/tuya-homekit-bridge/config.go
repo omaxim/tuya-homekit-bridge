@@ -12,13 +12,14 @@ import (
 
 // Config is the bridge configuration file (JSON).
 type Config struct {
-	Name         string     `json:"name"`          // bridge name shown in the Home app
-	Pin          string     `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
-	Storage      string     `json:"storage"`       // directory for pairing data (must persist)
-	PollInterval Duration   `json:"poll_interval"` // how often to read device state, e.g. "10s"
-	Interfaces   []string   `json:"interfaces"`    // optional: network interfaces to advertise on
-	Web          *WebConfig `json:"web"`           // optional local web UI
-	Devices      []Device   `json:"devices"`
+	Name         string            `json:"name"`          // bridge name shown in the Home app
+	Pin          string            `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
+	Storage      string            `json:"storage"`       // directory for pairing data (must persist)
+	PollInterval Duration          `json:"poll_interval"` // how often to read device state, e.g. "10s"
+	Interfaces   []string          `json:"interfaces"`    // optional: network interfaces to advertise on
+	Web          *WebConfig        `json:"web"`           // optional local web UI
+	Thermostat   *ThermostatConfig `json:"thermostat"`    // optional thermostat fed by an external temperature
+	Devices      []Device          `json:"devices"`
 }
 
 // WebConfig enables a small password-protected web UI for the local network.
@@ -117,6 +118,11 @@ func loadConfig(path string) (*Config, error) {
 			default:
 				return nil, fmt.Errorf("accessory %q: unknown type %q", a.Name, a.Type)
 			}
+		}
+	}
+	if c.Thermostat != nil {
+		if err := c.Thermostat.setDefaults(&c); err != nil {
+			return nil, err
 		}
 	}
 	return &c, nil

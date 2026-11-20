@@ -48,6 +48,11 @@ uci set dhcp.@domain[-1].ip='192.168.1.2'
 Then `http://heating` opens the heating page and the router's own UI stays on
 `http://192.168.1.1`.
 
+With a [thermostat](homepod-thermostat.md) configured, the page also shows the room
+temperature, the target with −/+ buttons and an on/off button for the thermostat, and
+serves `GET|POST /api/temperature?token=…&value=…` for automations (token instead of a
+login).
+
 ## Security
 
 - Plain HTTP, meant for the **local network only**. Do not port‑forward it to the

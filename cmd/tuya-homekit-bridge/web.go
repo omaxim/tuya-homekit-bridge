@@ -25,9 +25,10 @@ var webFS embed.FS
 var indexTmpl = template.Must(template.ParseFS(webFS, "web/index.html"))
 
 type webServer struct {
-	cfg  *WebConfig
-	name string
-	devs []*device
+	cfg    *WebConfig
+	name   string
+	devs   []*device
+	thermo *thermostat
 
 	mu       sync.Mutex
 	sessions map[string]time.Time
@@ -36,11 +37,14 @@ type webServer struct {
 const sessionCookie = "thb_session"
 const sessionTTL = 30 * 24 * time.Hour
 
-func startWeb(cfg *Config, devs []*device) {
+func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
 	if cfg.Web == nil || cfg.Web.Listen == "" {
+		if thermo != nil {
+			log.Printf("thermostat: no \"web\" config, so the temperature endpoint is not available")
+		}
 		return
 	}
-	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, sessions: map[string]time.Time{}}
+	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, thermo: thermo, sessions: map[string]time.Time{}}
 	if w.cfg.Title == "" {
 		w.cfg.Title = cfg.Name
 	}
@@ -50,6 +54,10 @@ func startWeb(cfg *Config, devs []*device) {
 	mux.HandleFunc("/logout", w.logout)
 	mux.HandleFunc("/api/state", w.auth(w.apiState))
 	mux.HandleFunc("/api/switch", w.auth(w.apiSwitch))
+	if thermo != nil {
+		mux.HandleFunc("/api/temperature", thermo.handleTemperature) // token auth, for automations
+		mux.HandleFunc("/api/thermostat", w.auth(w.apiThermostat))
+	}
 	srv := &http.Server{Addr: w.cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("web UI listening on %s", w.cfg.Listen)
@@ -194,7 +202,33 @@ func (w *webServer) state() []apiAccessory {
 func (w *webServer) apiState(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(rw).Encode(w.state())
+	out := map[string]any{"accessories": w.state()}
+	if w.thermo != nil {
+		out["thermostat"] = w.thermo.snapshot()
+	}
+	json.NewEncoder(rw).Encode(out)
+}
+
+func (w *webServer) apiThermostat(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if v := r.FormValue("target"); v != "" {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			http.Error(rw, "bad target", http.StatusBadRequest)
+			return
+		}
+		log.Printf("web UI: %s set target %.1f", host, f)
+		w.thermo.SetTarget(f)
+	}
+	if v := r.FormValue("enabled"); v != "" {
+		log.Printf("web UI: %s set thermostat %s", host, map[bool]string{true: "on", false: "off"}[v == "true"])
+		w.thermo.SetEnabled(v == "true")
+	}
+	w.apiState(rw, r)
 }
 
 func (w *webServer) apiSwitch(rw http.ResponseWriter, r *http.Request) {
