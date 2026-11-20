@@ -187,6 +187,7 @@ const thermoIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="curren
 function renderTiles(items) {
   const box = $("tiles");
   box.replaceChildren();
+  box.style.display = items.length ? "" : "none";
   for (const a of items) {
     const tile = el("button", "tile" + (a.on ? " on" : ""));
     tile.disabled = busy || (a.type === "switch" && !a.online);

@@ -311,10 +311,18 @@ func (t *thermostat) run(stop <-chan struct{}) {
 	}
 }
 
+// Fixed HomeKit accessory IDs, so adding or removing switch accessories never
+// renumbers the thermostat (HomeKit identifies accessories by ID).
+const (
+	thermostatAID = 100
+	triggerAID    = 101
+)
+
 // buildAccessories returns the HomeKit thermostat (and the trigger sensor).
 func (t *thermostat) buildAccessories() []*accessory.A {
 	info := accessory.Info{Name: t.cfg.Name, Manufacturer: "tuya-homekit-bridge", Model: "Thermostat"}
 	th := accessory.NewThermostat(info)
+	th.A.Id = thermostatAID
 	s := th.Thermostat
 	s.TargetTemperature.SetMinValue(t.cfg.MinTarget)
 	s.TargetTemperature.SetMaxValue(t.cfg.MaxTarget)
@@ -351,6 +359,7 @@ func (t *thermostat) buildAccessories() []*accessory.A {
 
 	if tc := t.cfg.Trigger; tc != nil {
 		m := accessory.NewMotionSensor(accessory.Info{Name: tc.Name, Manufacturer: "tuya-homekit-bridge", Model: "Trigger"})
+		m.A.Id = triggerAID
 		go func() {
 			tk := time.NewTicker(tc.Interval.Duration)
 			defer tk.Stop()

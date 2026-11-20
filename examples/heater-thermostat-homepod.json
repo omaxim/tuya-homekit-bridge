@@ -1,0 +1,69 @@
+{
+  "name": "Heater Bridge",
+  "pin": "12345678",
+  "storage": "db",
+  "poll_interval": "10s",
+  "web": {
+    "listen": ":8080",
+    "password": "REPLACE_WITH_SHARED_PASSWORD",
+    "title": "Heating",
+    "lang": "en"
+  },
+  "devices": [
+    {
+      "name": "Heater",
+      "id": "REPLACE_WITH_DEVICE_ID",
+      "ip": "",
+      "local_key": "REPLACE_WITH_LOCAL_KEY",
+      "accessories": [],
+      "enforce": [
+        {
+          "when": {
+            "1": true
+          },
+          "set": {
+            "2": 50
+          }
+        }
+      ]
+    }
+  ],
+  "thermostat": {
+    "name": "Heating",
+    "device": 0,
+    "default_target": 21,
+    "min_target": 10,
+    "max_target": 28,
+    "hysteresis": 0.3,
+    "boost_below": 1.0,
+    "max_age": "20m",
+    "token": "REPLACE_WITH_LONG_RANDOM_TOKEN",
+    "off": {
+      "set": {
+        "1": false
+      }
+    },
+    "heat": {
+      "set": {
+        "2": 50,
+        "1": true
+      },
+      "then": {
+        "4": "low"
+      }
+    },
+    "boost": {
+      "set": {
+        "2": 50,
+        "1": true
+      },
+      "then": {
+        "4": "high"
+      }
+    },
+    "trigger": {
+      "name": "Heating trigger",
+      "interval": "5m"
+    }
+  }
+}

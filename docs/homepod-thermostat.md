@@ -60,7 +60,13 @@ above 21.3 °C → off; in between the current stage is kept. The thermostat's
 keep working; in **Heat** mode the bridge corrects manual changes on the next update.
 
 The thermostat appears in the Home app with a target slider, the room temperature and
-Off/Heat. The web UI shows the same with −/+ buttons.
+Off/Heat; whether it runs at low or full power is decided automatically and shown as
+"Heating to …" / "Full power to …" in the web UI. You usually don't need separate
+switch accessories any more – leave `"accessories": []` on the device (see
+[examples/heater-thermostat-homepod.json](../examples/heater-thermostat-homepod.json)).
+
+The thermostat and the trigger use fixed HomeKit accessory IDs (100 and 101), so adding
+or removing switch accessories later does not confuse the Home app.
 
 ### Home automation (runs on the HomePod)
 

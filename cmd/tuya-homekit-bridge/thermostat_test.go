@@ -177,3 +177,12 @@ func TestTemperatureEndpoint(t *testing.T) {
 		t.Fatalf("garbage: %d", c)
 	}
 }
+
+func TestFixedAccessoryIDs(t *testing.T) {
+	th, _, _ := heaterThermo(t)
+	th.cfg.Trigger = &TriggerConfig{Name: "trigger", Interval: Duration{time.Hour}}
+	accs := th.buildAccessories()
+	if len(accs) != 2 || accs[0].Id != thermostatAID || accs[1].Id != triggerAID {
+		t.Fatalf("unexpected accessory IDs: %d accessories", len(accs))
+	}
+}
