@@ -4,6 +4,11 @@ package main
 // It is meant for the local network only (no TLS); do not expose it to the internet.
 
 import (
+	"fmt"
+	"regexp"
+
+	"github.com/omaxim/tuya-homekit-bridge/tuya"
+
 	"crypto/rand"
 	"crypto/subtle"
 	"embed"
@@ -32,6 +37,10 @@ type webServer struct {
 
 	mu       sync.Mutex
 	sessions map[string]time.Time
+
+	subMu sync.Mutex
+	subs  map[chan []byte]struct{}
+	last  []byte
 }
 
 const sessionCookie = "thb_session"
@@ -44,7 +53,15 @@ func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
 		}
 		return
 	}
-	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, thermo: thermo, sessions: map[string]time.Time{}}
+	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, thermo: thermo,
+		sessions: map[string]time.Time{}, subs: map[chan []byte]struct{}{}}
+	// Push state to open pages whenever something changes.
+	for _, d := range devs {
+		d.onUpdate(func(tuya.DPS) { w.publish() })
+	}
+	if thermo != nil {
+		thermo.onChange(w.publish)
+	}
 	if w.cfg.Title == "" {
 		w.cfg.Title = cfg.Name
 	}
@@ -53,6 +70,7 @@ func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
 	mux.HandleFunc("/login", w.login)
 	mux.HandleFunc("/logout", w.logout)
 	mux.HandleFunc("/api/state", w.auth(w.apiState))
+	mux.HandleFunc("/api/events", w.auth(w.apiEvents))
 	mux.HandleFunc("/api/switch", w.auth(w.apiSwitch))
 	if thermo != nil {
 		mux.HandleFunc("/api/temperature", thermo.handleTemperature) // token auth, for automations
@@ -199,14 +217,74 @@ func (w *webServer) state() []apiAccessory {
 	return out
 }
 
-func (w *webServer) apiState(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-	rw.Header().Set("Cache-Control", "no-store")
+func (w *webServer) stateJSON() []byte {
 	out := map[string]any{"accessories": w.state()}
 	if w.thermo != nil {
 		out["thermostat"] = w.thermo.snapshot()
 	}
-	json.NewEncoder(rw).Encode(out)
+	b, _ := json.Marshal(out)
+	return b
+}
+
+func (w *webServer) apiState(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Cache-Control", "no-store")
+	rw.Write(w.stateJSON())
+}
+
+// publish sends the state to all event subscribers if it changed.
+func (w *webServer) publish() {
+	b := w.stateJSON()
+	w.subMu.Lock()
+	defer w.subMu.Unlock()
+	if string(stripAges(b)) == string(stripAges(w.last)) {
+		return
+	}
+	w.last = b
+	for ch := range w.subs {
+		select {
+		case ch <- b:
+		default: // slow client; it will catch up with the next update
+		}
+	}
+}
+
+var agesRe = regexp.MustCompile(`"(updated_at|temperature_age_s)":("[^"]*"|\d+)`)
+
+// stripAges ignores timestamps when deciding whether anything changed.
+func stripAges(b []byte) []byte { return agesRe.ReplaceAll(b, nil) }
+
+// apiEvents streams state changes as Server-Sent Events.
+func (w *webServer) apiEvents(rw http.ResponseWriter, r *http.Request) {
+	fl, ok := rw.(http.Flusher)
+	if !ok {
+		http.Error(rw, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Set("Content-Type", "text/event-stream")
+	rw.Header().Set("Cache-Control", "no-store")
+	ch := make(chan []byte, 4)
+	w.subMu.Lock()
+	w.subs[ch] = struct{}{}
+	w.subMu.Unlock()
+	defer func() { w.subMu.Lock(); delete(w.subs, ch); w.subMu.Unlock() }()
+
+	fmt.Fprintf(rw, "retry: 3000\ndata: %s\n\n", w.stateJSON())
+	fl.Flush()
+	ping := time.NewTicker(25 * time.Second)
+	defer ping.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case b := <-ch:
+			fmt.Fprintf(rw, "data: %s\n\n", b)
+			fl.Flush()
+		case <-ping.C:
+			fmt.Fprint(rw, ": ping\n\n")
+			fl.Flush()
+		}
+	}
 }
 
 func (w *webServer) apiThermostat(rw http.ResponseWriter, r *http.Request) {

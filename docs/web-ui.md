@@ -1,9 +1,11 @@
 # Local web UI
 
 For people without Apple devices, the bridge can serve a small, password‑protected web
-page with on/off buttons for every `switch` accessory and readings for `temperature`
-accessories. It works in any phone or desktop browser on the same network and stays in
-sync with the Home app (both talk to the same bridge).
+page: a thermostat dial (drag or −/+, Off/Heat) when a [thermostat](homepod-thermostat.md)
+is configured, and tiles for every `switch` and `temperature` accessory. It works in any
+phone or desktop browser on the same network, follows the system light/dark theme and
+stays in sync with the Home app instantly (both talk to the same bridge; the page
+receives changes via Server‑Sent Events and falls back to polling).
 
 ```json
 "web": {
