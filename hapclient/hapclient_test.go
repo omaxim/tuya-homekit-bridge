@@ -75,8 +75,11 @@ func TestAgainstBrutellaServer(t *testing.T) {
 	if err != nil || !strings.Contains(string(raw), "\"accessories\"") {
 		t.Fatalf("accessories: %v %s", err, raw)
 	}
-	aid, iid := findTemperature(t, raw)
-	vals, err := s.Read(id(aid, iid))
+	tempID, err := FindCharacteristic(raw, "11")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err := s.Read(tempID)
 	if err != nil || len(vals) != 1 || string(vals[0].Value) != "21.5" {
 		t.Fatalf("read: %v %+v", err, vals)
 	}
@@ -98,43 +101,11 @@ func TestAgainstBrutellaServer(t *testing.T) {
 	}
 	defer u.Close()
 	th.TempSensor.CurrentTemperature.SetValue(19.0)
-	vals, err = u.Read(id(aid, iid))
+	vals, err = u.Read(tempID)
 	if err != nil || string(vals[0].Value) != "19" {
 		t.Fatalf("user read: %v %+v", err, vals)
 	}
 	if err := u.AddPairing("x", user.PublicKey(), 1); err == nil {
 		t.Fatal("non-admin could add a pairing")
 	}
-}
-
-func id(aid, iid uint64) string { return strings.TrimSpace(fmtUint(aid) + "." + fmtUint(iid)) }
-
-func fmtUint(v uint64) string { b, _ := json.Marshal(v); return string(b) }
-
-func findTemperature(t *testing.T, raw []byte) (uint64, uint64) {
-	var doc struct {
-		Accessories []struct {
-			AID      uint64 `json:"aid"`
-			Services []struct {
-				Characteristics []struct {
-					IID  uint64 `json:"iid"`
-					Type string `json:"type"`
-				} `json:"characteristics"`
-			} `json:"services"`
-		} `json:"accessories"`
-	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatal(err)
-	}
-	for _, a := range doc.Accessories {
-		for _, s := range a.Services {
-			for _, c := range s.Characteristics {
-				if c.Type == "11" || strings.HasPrefix(strings.ToUpper(c.Type), "00000011-") {
-					return a.AID, c.IID
-				}
-			}
-		}
-	}
-	t.Fatal("no CurrentTemperature characteristic")
-	return 0, 0
 }

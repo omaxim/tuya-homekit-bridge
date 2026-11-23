@@ -1,9 +1,9 @@
 package main
 
 // Thermostat: regulates a Tuya device in stages (off / heat / boost) from a room
-// temperature that is pushed to the bridge over HTTP – e.g. by a Home app
-// automation running on a HomePod, which reads the HomePod's own temperature
-// sensor (third-party software cannot read that sensor directly).
+// temperature that is either read directly from a HomeKit sensor accessory
+// such as a HomePod ("homekit_sensor", see homekit_sensor.go) or pushed to the
+// bridge over HTTP (/api/temperature, e.g. from a Home automation).
 
 import (
 	"crypto/subtle"
@@ -28,19 +28,20 @@ import (
 
 // ThermostatConfig configures the optional thermostat.
 type ThermostatConfig struct {
-	Name          string         `json:"name"`
-	Device        int            `json:"device"`         // index into devices
-	DefaultTarget float64        `json:"default_target"` // °C, default 21
-	MinTarget     float64        `json:"min_target"`     // default 10
-	MaxTarget     float64        `json:"max_target"`     // default 28
-	Hysteresis    float64        `json:"hysteresis"`     // °C around the target, default 0.3
-	BoostBelow    float64        `json:"boost_below"`    // use boost when this far below target, default 1.0; needs "boost"
-	MaxAge        Duration       `json:"max_age"`        // turn off if no temperature for this long, default 20m
-	Token         string         `json:"token"`          // required for POST/GET /api/temperature
-	Off           Stage          `json:"off"`
-	Heat          Stage          `json:"heat"`
-	Boost         *Stage         `json:"boost"`
-	Trigger       *TriggerConfig `json:"trigger"`
+	Name          string               `json:"name"`
+	Device        int                  `json:"device"`         // index into devices
+	DefaultTarget float64              `json:"default_target"` // °C, default 21
+	MinTarget     float64              `json:"min_target"`     // default 10
+	MaxTarget     float64              `json:"max_target"`     // default 28
+	Hysteresis    float64              `json:"hysteresis"`     // °C around the target, default 0.3
+	BoostBelow    float64              `json:"boost_below"`    // use boost when this far below target, default 1.0; needs "boost"
+	MaxAge        Duration             `json:"max_age"`        // turn off if no temperature for this long, default 20m
+	Token         string               `json:"token"`          // enables POST/GET /api/temperature (required without homekit_sensor)
+	HomeKitSensor *HomeKitSensorConfig `json:"homekit_sensor"` // read the temperature from a HomeKit accessory
+	Off           Stage                `json:"off"`
+	Heat          Stage                `json:"heat"`
+	Boost         *Stage               `json:"boost"`
+	Trigger       *TriggerConfig       `json:"trigger"`
 }
 
 // Stage is what is written to the device for one regulation stage.
@@ -81,7 +82,12 @@ func (c *ThermostatConfig) setDefaults(cfg *Config) error {
 	if c.MaxAge.Duration == 0 {
 		c.MaxAge.Duration = 20 * time.Minute
 	}
-	if len(c.Token) < 12 {
+	if c.HomeKitSensor != nil {
+		if err := c.HomeKitSensor.validate(); err != nil {
+			return err
+		}
+	}
+	if c.Token != "" && len(c.Token) < 12 || c.Token == "" && c.HomeKitSensor == nil {
 		return errors.New("thermostat: token must be at least 12 characters")
 	}
 	if len(c.Off.Set) == 0 || len(c.Heat.Set) == 0 {
@@ -402,7 +408,7 @@ func (t *thermostat) handleTemperature(rw http.ResponseWriter, r *http.Request) 
 	if tok == "" {
 		tok = r.FormValue("token")
 	}
-	if subtle.ConstantTimeCompare([]byte(tok), []byte(t.cfg.Token)) != 1 {
+	if t.cfg.Token == "" || subtle.ConstantTimeCompare([]byte(tok), []byte(t.cfg.Token)) != 1 {
 		log.Printf("thermostat: rejected temperature from %s: wrong token", r.RemoteAddr)
 		time.Sleep(time.Second)
 		http.Error(rw, "unauthorized", http.StatusUnauthorized)

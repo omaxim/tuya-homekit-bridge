@@ -101,6 +101,9 @@ func main() {
 			thermo.evaluate("startup")
 			thermo.run(stop)
 		}()
+		if hs := cfg.Thermostat.HomeKitSensor; hs != nil {
+			go newHomeKitSensor(*hs, thermo.SetTemperature).run(ctx)
+		}
 	}
 	lightStop := make(chan struct{})
 	go func() { <-ctx.Done(); close(lightStop) }()
