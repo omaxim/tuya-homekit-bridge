@@ -12,13 +12,15 @@ import (
 
 // Config is the bridge configuration file (JSON).
 type Config struct {
-	Name         string     `json:"name"`          // bridge name shown in the Home app
-	Pin          string     `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
-	Storage      string     `json:"storage"`       // directory for pairing data (must persist)
-	PollInterval Duration   `json:"poll_interval"` // how often to read device state, e.g. "10s"
-	Interfaces   []string   `json:"interfaces"`    // optional: network interfaces to advertise on
-	Web          *WebConfig `json:"web"`           // optional local web UI
-	Devices      []Device   `json:"devices"`
+	Name         string            `json:"name"`          // bridge name shown in the Home app
+	Pin          string            `json:"pin"`           // 8-digit HomeKit setup code, e.g. "12345678"
+	Storage      string            `json:"storage"`       // directory for pairing data (must persist)
+	PollInterval Duration          `json:"poll_interval"` // how often to read device state, e.g. "10s"
+	Interfaces   []string          `json:"interfaces"`    // optional: network interfaces to advertise on
+	Web          *WebConfig        `json:"web"`           // optional local web UI
+	Thermostat   *ThermostatConfig `json:"thermostat"`    // optional thermostat fed by an external temperature
+	Lights       []LightConfig     `json:"lights"`        // optional Xiaomi/Yeelight bulbs (miIO)
+	Devices      []Device          `json:"devices"`
 }
 
 // WebConfig enables a small password-protected web UI for the local network.
@@ -97,8 +99,13 @@ func loadConfig(path string) (*Config, error) {
 	if len(c.Pin) != 8 {
 		return nil, errors.New("pin must be 8 digits, e.g. \"12345678\" (entered in the Home app as 123-45-678)")
 	}
-	if len(c.Devices) == 0 {
-		return nil, errors.New("no devices configured")
+	if len(c.Devices) == 0 && len(c.Lights) == 0 {
+		return nil, errors.New("no devices or lights configured")
+	}
+	for i := range c.Lights {
+		if err := c.Lights[i].validate(); err != nil {
+			return nil, err
+		}
 	}
 	for i, d := range c.Devices {
 		if d.ID == "" || len(d.LocalKey) != 16 {
@@ -117,6 +124,11 @@ func loadConfig(path string) (*Config, error) {
 			default:
 				return nil, fmt.Errorf("accessory %q: unknown type %q", a.Name, a.Type)
 			}
+		}
+	}
+	if c.Thermostat != nil {
+		if err := c.Thermostat.setDefaults(&c); err != nil {
+			return nil, err
 		}
 	}
 	return &c, nil

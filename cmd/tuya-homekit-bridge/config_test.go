@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/omaxim/tuya-homekit-bridge/tuya"
@@ -17,7 +18,8 @@ func TestExamplesLoad(t *testing.T) {
 		raw, _ := os.ReadFile(f)
 		tmp := filepath.Join(t.TempDir(), "c.json")
 		// examples use placeholders; make the key 16 chars so validation passes
-		os.WriteFile(tmp, []byte(replaceKey(string(raw))), 0o600)
+		fixed := strings.ReplaceAll(replaceKey(string(raw)), "REPLACE_WITH_LONG_RANDOM_TOKEN", "0123456789abcdef")
+		os.WriteFile(tmp, []byte(fixed), 0o600)
 		if _, err := loadConfig(tmp); err != nil {
 			t.Errorf("%s: %v", f, err)
 		}

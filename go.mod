@@ -2,10 +2,12 @@ module github.com/omaxim/tuya-homekit-bridge
 
 go 1.27.4
 
-require github.com/brutella/hap v0.0.35
+require (
+	github.com/brutella/dnssd v1.2.14
+	github.com/brutella/hap v0.0.35
+)
 
 require (
-	github.com/brutella/dnssd v1.2.14 // indirect
 	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/miekg/dns v1.1.61 // indirect
 	github.com/tadglines/go-pkgs v0.0.0-20210623144937-b983b20f54f9 // indirect

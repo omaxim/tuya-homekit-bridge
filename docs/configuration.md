@@ -12,6 +12,7 @@ The bridge reads one JSON file (`-config`, default `config.json`).
 | `poll_interval` | `"10s"` | How often device state is read. |
 | `interfaces` | all | Restrict HomeKit advertising to these interfaces, e.g. `["br-lan"]`. |
 | `web` | off | Optional local web UI, see [web-ui.md](web-ui.md). |
+| `thermostat` | off | Optional thermostat fed by a HomeKit sensor or an HTTP push, see [homepod-thermostat.md](homepod-thermostat.md) and [homepod-sensor.md](homepod-sensor.md). |
 | `devices` | – | List of devices (below). |
 
 ## Device

@@ -2,30 +2,94 @@
 <html lang="{{.Lang}}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c1712">
 <title>{{.Title}}</title>
 <style>
-:root{--bg:#f5f5f2;--card:#fff;--fg:#1d1d1b;--muted:#6b6b66;--line:#e2e2dc;--on:#d9480f;--on-bg:#fff1e8;--btn:#1d1d1b;--btn-fg:#fff;--err:#c92a2a}
-@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1f1f1d;--fg:#f0f0ea;--muted:#9a9a93;--line:#33332f;--on:#ff8a4c;--on-bg:#2b1d14;--btn:#f0f0ea;--btn-fg:#141413}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-main{max-width:480px;margin:0 auto;padding:24px 16px 48px}
-h1{font-size:22px;margin:0 0 4px}
-.sub{color:var(--muted);font-size:14px;margin:0 0 20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
-.card.on{border-color:var(--on);background:var(--on-bg)}
-.name{flex:1;font-weight:600}
-.state{font-size:14px;color:var(--muted);font-weight:400}
-.card.on .state{color:var(--on)}
-button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 18px;min-width:104px;background:var(--btn);color:var(--btn-fg);cursor:pointer}
-button:disabled{opacity:.5}
-.temp{font-size:22px;font-weight:600}
-form.login{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
-input{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);margin:8px 0 12px}
-.err{color:var(--err);font-size:14px}
-.foot{margin-top:20px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+:root{
+  --bg1:#f6efe6;--bg2:#e9dccd;--glass:rgba(255,255,255,.62);--glass-line:rgba(255,255,255,.7);
+  --fg:#1d1a17;--muted:#6e665e;--tile:rgba(255,255,255,.55);--tile-on:#fff;--tile-on-fg:#1d1a17;
+  --track:rgba(0,0,0,.08);--heat:#ff8a1f;--heat2:#ffb15c;--idle:#9b948c;--seg:rgba(0,0,0,.06);--seg-on:#fff;--err:#c92a2a;
+  --shadow:0 8px 30px rgba(60,40,20,.12)
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg1:#2a2017;--bg2:#100d0a;--glass:rgba(40,34,28,.6);--glass-line:rgba(255,255,255,.08);
+  --fg:#f5f1ec;--muted:#a59c92;--tile:rgba(255,255,255,.08);--tile-on:#f5f1ec;--tile-on-fg:#1d1a17;
+  --track:rgba(255,255,255,.1);--idle:#7d756d;--seg:rgba(255,255,255,.08);--seg-on:rgba(255,255,255,.22);--err:#ff8787;
+  --shadow:0 8px 30px rgba(0,0,0,.35)
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(120% 80% at 20% 0%,var(--bg1),var(--bg2));background-attachment:fixed;color:var(--fg);
+  font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:max(24px,env(safe-area-inset-top)) 16px 40px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:8px 0 2px}
+.sub{color:var(--muted);font-size:15px;margin:0 0 18px;min-height:20px}
+.glass{background:var(--glass);border:1px solid var(--glass-line);border-radius:26px;box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4)}
+.thermo{padding:18px 18px 16px;margin-bottom:16px}
+.thermo-head{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.thermo-head span{color:var(--muted);font-weight:500;font-size:14px}
+.dial{position:relative;width:min(300px,78vw);aspect-ratio:1;margin:6px auto 0;touch-action:none;user-select:none}
+.dial svg{width:100%;height:100%;display:block;cursor:grab}
+.dial svg:active{cursor:grabbing}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.mode-label{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.mode-label.heat{color:var(--heat)}
+.target-val{font-size:68px;font-weight:300;letter-spacing:-.04em;line-height:1.05}
+.current{font-size:15px;color:var(--muted)}
+.steps{display:flex;justify-content:center;gap:56px;margin:2px 0 14px}
+.round{width:52px;height:52px;border-radius:50%;border:0;background:var(--seg);color:var(--fg);font-size:28px;font-weight:300;cursor:pointer}
+.round:disabled{opacity:.35}
+.seg{display:flex;background:var(--seg);border-radius:14px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;color:var(--fg);font:inherit;font-weight:600;padding:10px;border-radius:11px;cursor:pointer}
+.seg button.on{background:var(--seg-on);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.note{font-size:13px;color:var(--muted);text-align:center;margin-top:10px;min-height:17px}
+.note.warn{color:var(--err)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border-radius:20px;border:0;text-align:left;
+  background:var(--tile);color:var(--fg);font:inherit;cursor:pointer;min-height:112px;box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transition:background .2s,transform .1s}
+.tile:active{transform:scale(.97)}
+.tile.on{background:var(--tile-on);color:var(--tile-on-fg)}
+.tile:disabled{opacity:.5;cursor:default}
+.icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--seg);color:var(--muted)}
+.tile.on .icon{background:var(--heat);color:#fff}
+.tile b{font-size:15px;line-height:1.2}
+.tile small{font-size:13px;color:var(--muted)}
+.tile.on small{color:#7a5a3a}
+.lightcard{padding:16px 18px;margin-bottom:16px;display:grid;gap:14px}
+.lhead{display:flex;align-items:center;gap:12px}
+.lhead .icon{flex:none}
+.lhead.on .icon{background:#ffd43b;color:#5c4400}
+.lname{flex:1;min-width:0}
+.lname b{display:block}
+.lname small{color:var(--muted);font-size:13px}
+.switch{position:relative;width:52px;height:32px;border-radius:16px;border:0;background:var(--seg);cursor:pointer;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch.on{background:#34c759}
+.switch.on::after{transform:translateX(20px)}
+.slider{display:grid;gap:6px}
+.slider label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slider input{width:100%;-webkit-appearance:none;appearance:none;height:30px;border-radius:15px;background:var(--seg);outline:none}
+.slider input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.slider input::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.slider input.bright{background:linear-gradient(90deg,#3a332b,#ffd43b)}
+.slider input.ct{background:linear-gradient(90deg,#ff9b3d,#ffe7c2,#dbe9ff)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.swatch.sel{border-color:var(--fg)}
+.lightcard.off .slider,.lightcard.off .swatches{opacity:.45}
+.login{padding:20px}
+.login input{font:inherit;width:100%;padding:13px 14px;border:0;border-radius:12px;background:var(--seg);color:var(--fg);margin:8px 0 14px;outline:none}
+.primary{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-weight:600;background:var(--heat);color:#fff;cursor:pointer}
+.err{color:var(--err);font-size:14px;margin:0 0 12px}
+.foot{display:flex;justify-content:space-between;margin-top:22px;font-size:13px;color:var(--muted)}
 .foot a{color:var(--muted)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#46b85a;margin-right:6px;vertical-align:middle}
+.dot.off{background:var(--idle)}
 </style>
 </head>
 <body>
@@ -33,83 +97,217 @@ input{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-r
 <h1>{{.Title}}</h1>
 {{if not .LoggedIn}}
 <p class="sub" data-t="loginHint"></p>
-<form class="login" method="post" action="/login">
+<form class="glass login" method="post" action="/login">
   <label for="pw" data-t="password"></label>
   <input id="pw" name="password" type="password" autocomplete="current-password" autofocus required>
   {{if .Error}}<p class="err" data-t="wrong"></p>{{end}}
-  <button type="submit" data-t="login"></button>
+  <button class="primary" type="submit" data-t="login"></button>
 </form>
 {{else}}
-<p class="sub" id="updated">&nbsp;</p>
-<div id="list"></div>
-<div class="foot"><span data-t="lanOnly"></span>{{if .HasPass}}<a href="/logout" data-t="logout"></a>{{end}}</div>
+<p class="sub" id="sub">&nbsp;</p>
+<section id="thermo"></section>
+<section id="lights"></section>
+<section class="tiles" id="tiles"></section>
+<div class="foot"><span><span class="dot off" id="live"></span><span data-t="lanOnly"></span></span>{{if .HasPass}}<a href="/logout" data-t="logout"></a>{{end}}</div>
 {{end}}
 </main>
 <script>
 const T = {
   en: {loginHint:"Enter the password to control the devices.", password:"Password", wrong:"Wrong password.", login:"Log in",
-       on:"On", off:"Off", turnOn:"Turn on", turnOff:"Turn off", offline:"Not responding", updated:"Updated", ago:"s ago",
-       lanOnly:"Local network only", logout:"Log out", failed:"Could not change the device. Try again."},
+       on:"On", off:"Off", offline:"Not responding", lanOnly:"Local network only", logout:"Log out",
+       failed:"Could not change the device. Try again.", thermostat:"Thermostat", room:"Room",
+       brightness:"Brightness", white:"White", color:"Colour", warm:"warm", cold:"cold",
+       heatingTo:"Heating to", boostTo:"Full power to", idle:"Idle", modeOff:"Off", heat:"Heat", now:"Now",
+       noTemp:"No room temperature received – heating is off for safety.", tempAge:"Room temperature from", minAgo:"min ago", justNow:"just now"},
   cs: {loginHint:"Pro ovládání zadej heslo.", password:"Heslo", wrong:"Špatné heslo.", login:"Přihlásit",
-       on:"Zapnuto", off:"Vypnuto", turnOn:"Zapnout", turnOff:"Vypnout", offline:"Neodpovídá", updated:"Aktualizováno před", ago:"s",
-       lanOnly:"Jen v místní síti", logout:"Odhlásit", failed:"Zařízení se nepodařilo přepnout. Zkus to znovu."}
+       on:"Zapnuto", off:"Vypnuto", offline:"Neodpovídá", lanOnly:"Jen v místní síti", logout:"Odhlásit",
+       failed:"Zařízení se nepodařilo přepnout. Zkus to znovu.", thermostat:"Termostat", room:"Místnost",
+       brightness:"Jas", white:"Bílá", color:"Barva", warm:"teplá", cold:"studená",
+       heatingTo:"Topí na", boostTo:"Naplno na", idle:"Netopí", modeOff:"Vypnuto", heat:"Topení", now:"Teď",
+       noTemp:"Nepřišla teplota z místnosti – topení je z bezpečnostních důvodů vypnuté.", tempAge:"Teplota z místnosti", minAgo:"min zpět", justNow:"právě teď"}
 }[document.documentElement.lang] || null;
 const t = k => (T || {})[k] || k;
 document.querySelectorAll("[data-t]").forEach(e => e.textContent = t(e.dataset.t));
+const cs = document.documentElement.lang === "cs";
+const num = (v, d = 1) => { const s = (Math.round(v * 10) / 10).toFixed(d).replace(/\.0$/, ""); return cs ? s.replace(".", ",") : s; };
 
-const list = document.getElementById("list");
-let lastAt = null, busy = false;
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-function render(items) {
-  list.replaceChildren();
-  for (const a of items) {
-    const card = document.createElement("div");
-    card.className = "card" + (a.on ? " on" : "");
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = a.name;
-    const st = document.createElement("div");
-    st.className = "state";
-    card.append(name);
-    if (a.type === "switch") {
-      st.textContent = !a.online ? t("offline") : a.on ? t("on") : t("off");
-      name.append(st);
-      const b = document.createElement("button");
-      b.textContent = a.on ? t("turnOff") : t("turnOn");
-      b.disabled = !a.online || busy;
-      b.onclick = () => toggle(a, !a.on);
-      card.append(b);
-    } else if (a.type === "temperature") {
-      const v = document.createElement("div");
-      v.className = "temp";
-      v.textContent = a.value != null ? a.value.toFixed(1).replace(/\.0$/, "") + " °C" : "–";
-      card.append(v);
+let data = null, busy = false, dragTarget = null;
+
+/* ---------- thermostat dial ---------- */
+const START = 135, SWEEP = 270, R = 120, C = 150;
+const polar = deg => { const a = (deg - 90) * Math.PI / 180; return [C + R * Math.cos(a), C + R * Math.sin(a)]; };
+function arc(a0, a1) {
+  const [x0, y0] = polar(a0 + 90), [x1, y1] = polar(a1 + 90);
+  return `M ${x0} ${y0} A ${R} ${R} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`;
+}
+const valToDeg = (v, th) => START + SWEEP * Math.min(1, Math.max(0, (v - th.min) / (th.max - th.min)));
+
+function renderThermo(th) {
+  const box = $("thermo");
+  const target = dragTarget ?? th.target;
+  const heating = th.enabled && th.heating;
+  const color = !th.enabled ? "var(--idle)" : heating ? "url(#g)" : "var(--idle)";
+  const tDeg = valToDeg(target, th), [kx, ky] = polar(tDeg + 90);
+  let cur = "";
+  if (th.temperature != null) { const [cx, cy] = polar(valToDeg(th.temperature, th) + 90); cur = `<circle cx="${cx}" cy="${cy}" r="5" fill="var(--fg)" opacity=".75"/>`; }
+  const label = !th.enabled ? t("modeOff") : !th.fresh ? t("idle") : th.stage === "boost" ? t("boostTo") : heating ? t("heatingTo") : t("idle");
+  box.className = "glass thermo";
+  box.innerHTML = `
+    <div class="thermo-head">${t("thermostat")}<span>${th.temperature != null ? t("room") + " " + num(th.temperature) + "°" : ""}</span></div>
+    <div class="dial">
+      <svg viewBox="0 0 300 300" id="dialsvg" aria-label="${t("thermostat")}">
+        <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="var(--heat2)"/><stop offset="1" stop-color="var(--heat)"/></linearGradient></defs>
+        <path d="${arc(START, START + SWEEP)}" fill="none" stroke="var(--track)" stroke-width="20" stroke-linecap="round"/>
+        <path d="${arc(START, Math.max(START + 0.01, tDeg))}" fill="none" stroke="${color}" stroke-width="20" stroke-linecap="round"/>
+        ${cur}
+        <circle cx="${kx}" cy="${ky}" r="15" fill="#fff" stroke="rgba(0,0,0,.12)" stroke-width="1" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))"/>
+      </svg>
+      <div class="center">
+        <div class="mode-label ${heating ? "heat" : ""}">${label}</div>
+        <div class="target-val">${num(target)}°</div>
+        <div class="current">${th.temperature != null ? t("now") + " " + num(th.temperature) + "°" : "–"}</div>
+      </div>
+    </div>
+    <div class="steps"><button class="round" id="minus" aria-label="−">−</button><button class="round" id="plus" aria-label="+">+</button></div>
+    <div class="seg"><button id="m-off" class="${th.enabled ? "" : "on"}">${t("modeOff")}</button><button id="m-heat" class="${th.enabled ? "on" : ""}">${t("heat")}</button></div>
+    <div class="note ${th.enabled && !th.fresh ? "warn" : ""}">${
+      th.enabled && !th.fresh ? t("noTemp") :
+      th.temperature_age_s != null ? t("tempAge") + " " + (th.temperature_age_s < 60 ? t("justNow") : Math.round(th.temperature_age_s / 60) + " " + t("minAgo")) : ""}</div>`;
+  $("minus").disabled = busy || target <= th.min;
+  $("plus").disabled = busy || target >= th.max;
+  $("minus").onclick = () => send("/api/thermostat", {target: target - 0.5});
+  $("plus").onclick = () => send("/api/thermostat", {target: target + 0.5});
+  $("m-off").onclick = () => th.enabled && send("/api/thermostat", {enabled: false});
+  $("m-heat").onclick = () => !th.enabled && send("/api/thermostat", {enabled: true});
+  attachDrag($("dialsvg"), th);
+}
+
+function attachDrag(svg, th) {
+  const toVal = ev => {
+    const r = svg.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width * 300 - C, y = (ev.clientY - r.top) / r.height * 300 - C;
+    let deg = Math.atan2(y, x) * 180 / Math.PI; // 0 = right, clockwise
+    deg = (deg + 360) % 360;
+    if (deg < START - 45) deg += 360;           // map 0..90 to 360..450
+    deg = Math.min(START + SWEEP, Math.max(START, deg));
+    const v = th.min + (deg - START) / SWEEP * (th.max - th.min);
+    return Math.round(v * 2) / 2;
+  };
+  svg.onpointerdown = ev => { svg.setPointerCapture(ev.pointerId); dragTarget = toVal(ev); renderThermo(th); };
+  svg.onpointermove = ev => { if (dragTarget == null) return; const v = toVal(ev); if (v !== dragTarget) { dragTarget = v; renderThermo(th); } };
+  svg.onpointerup = svg.onpointercancel = () => {
+    if (dragTarget == null) return;
+    const v = dragTarget; dragTarget = null;
+    if (v !== th.target) send("/api/thermostat", {target: v}); else renderThermo(th);
+  };
+}
+
+
+/* ---------- lights ---------- */
+const bulb = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/></svg>`;
+const SWATCHES = [[0,100],[30,100],[55,100],[120,80],[180,70],[220,90],[275,70],[320,70]];
+let sliding = false;
+function renderLights(ls) {
+  const box = $("lights");
+  box.replaceChildren();
+  for (const l of ls || []) {
+    const card = el("div", "glass lightcard" + (l.on ? "" : " off"));
+    const head = el("div", "lhead" + (l.on ? " on" : ""));
+    const icon = el("div", "icon"); icon.innerHTML = bulb;
+    const nm = el("div", "lname"); nm.append(el("b", "", l.name), el("small", "", !l.online ? t("offline") : l.on ? l.brightness + " %" : t("off")));
+    const sw = el("button", "switch" + (l.on ? " on" : "")); sw.setAttribute("aria-label", l.name); sw.setAttribute("aria-pressed", l.on);
+    sw.disabled = busy || !l.online;
+    sw.onclick = () => send("/api/light", {index: l.index, on: !l.on});
+    head.append(icon, nm, sw);
+    card.append(head);
+    const slider = (cls, label, min, max, val, fmt, key) => {
+      const w = el("div", "slider");
+      const lab = el("label"); const v = el("span", "", fmt(val)); lab.append(el("span", "", label), v);
+      const inp = document.createElement("input"); inp.type = "range"; inp.min = min; inp.max = max; inp.value = val; inp.className = cls;
+      inp.setAttribute("aria-label", label); inp.disabled = !l.online;
+      inp.oninput = () => { sliding = true; v.textContent = fmt(+inp.value); };
+      inp.onchange = () => { sliding = false; send("/api/light", {index: l.index, [key]: inp.value}); };
+      w.append(lab, inp); return w;
+    };
+    card.append(slider("bright", t("brightness"), 1, 100, l.brightness || 1, v => v + " %", "brightness"));
+    card.append(slider("ct", t("white"), 1700, 6500, l.ct || 4000, v => v + " K", "ct"));
+    if (l.color) {
+      const sws = el("div", "swatches");
+      for (const [h, sat] of SWATCHES) {
+        const b = el("button", "swatch" + (l.mode === "color" && Math.abs(l.hue - h) < 8 && Math.abs(l.sat - sat) < 10 ? " sel" : ""));
+        b.style.background = `hsl(${h} ${sat}% 55%)`; b.setAttribute("aria-label", t("color") + " " + h);
+        b.disabled = !l.online;
+        b.onclick = () => send("/api/light", {index: l.index, hue: h, sat});
+        sws.append(b);
+      }
+      card.append(sws);
     }
-    list.append(card);
-    if (a.updated_at) lastAt = new Date(a.updated_at);
+    box.append(card);
   }
 }
 
-async function load() {
-  const r = await fetch("/api/state", {cache: "no-store"});
-  if (r.status === 401) return location.reload();
-  if (r.ok) render(await r.json());
+/* ---------- switch tiles ---------- */
+const flame = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 3.2-1.4 5-3 6.8C7.4 10.6 6 12.4 6 15a6 6 0 0 0 12 0c0-2.3-1-4.2-2.4-5.6.1 1.5-.4 2.7-1.6 3.3.4-3.6-.8-7.6-2-10.7z"/></svg>`;
+const thermoIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0zM12 20a2 2 0 0 1-1-3.7V9h2v7.3A2 2 0 0 1 12 20z"/></svg>`;
+
+function renderTiles(items) {
+  const box = $("tiles");
+  box.replaceChildren();
+  box.style.display = items.length ? "" : "none";
+  for (const a of items) {
+    const tile = el("button", "tile" + (a.on ? " on" : ""));
+    tile.disabled = busy || (a.type === "switch" && !a.online);
+    const icon = el("div", "icon"); icon.innerHTML = a.type === "temperature" ? thermoIcon : flame;
+    const text = el("div");
+    text.append(el("b", "", a.name), document.createElement("br"),
+      el("small", "", a.type === "temperature" ? (a.value != null ? num(a.value) + " °C" : "–") : !a.online ? t("offline") : a.on ? t("on") : t("off")));
+    tile.append(icon, text);
+    if (a.type === "switch") tile.onclick = () => send("/api/switch", {device: a.device, index: a.index, on: !a.on});
+    else tile.disabled = true;
+    box.append(tile);
+  }
 }
 
-async function toggle(a, on) {
-  busy = true; load();
-  const body = new URLSearchParams({device: a.device, index: a.index, on});
-  const r = await fetch("/api/switch", {method: "POST", body});
-  busy = false;
-  if (r.ok) render(await r.json()); else { alert(t("failed")); load(); }
+function render() {
+  if (!data) return;
+  if (data.thermostat) renderThermo(data.thermostat); else $("thermo").replaceChildren();
+  renderLights(data.lights);
+  renderTiles(data.accessories || []);
+  const th = data.thermostat;
+  $("sub").textContent = th && th.temperature != null
+    ? t("room") + " " + num(th.temperature) + " °C · " + (!th.enabled ? t("modeOff") : th.heating ? t("heatingTo") + " " + num(th.target) + " °C" : t("idle"))
+    : "";
 }
 
-function tick() {
-  const u = document.getElementById("updated");
-  if (u && lastAt) u.textContent = t("updated") + " " + Math.max(0, Math.round((Date.now() - lastAt) / 1000)) + " " + t("ago");
+async function send(url, params) {
+  busy = true; render();
+  try {
+    const r = await fetch(url, {method: "POST", body: new URLSearchParams(params)});
+    if (r.status === 401) return location.reload();
+    if (!r.ok) throw new Error(r.status);
+    data = await r.json();
+  } catch (e) { alert(t("failed")); }
+  busy = false; render();
 }
 
-if (list) { load(); setInterval(load, 5000); setInterval(tick, 1000); }
+/* ---------- live updates (Server-Sent Events, polling fallback) ---------- */
+function setLive(on) { const d = $("live"); if (d) d.className = "dot" + (on ? "" : " off"); }
+async function poll() {
+  try { const r = await fetch("/api/state", {cache: "no-store"}); if (r.status === 401) return location.reload(); if (r.ok) { data = await r.json(); if (dragTarget == null && !busy && !sliding) render(); } } catch (e) {}
+}
+function connect() {
+  if (!window.EventSource) { setInterval(poll, 5000); poll(); return; }
+  const es = new EventSource("/api/events");
+  es.onmessage = ev => { data = JSON.parse(ev.data); setLive(true); if (dragTarget == null && !busy && !sliding) render(); };
+  es.onerror = () => { setLive(false); poll(); };
+}
+if ($("tiles")) {
+  connect();
+  setInterval(() => { if (data && data.thermostat && data.thermostat.temperature_age_s != null) { data.thermostat.temperature_age_s += 30; if (dragTarget == null && !busy && !sliding) render(); } }, 30000);
+}
 </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ import (
 
 	"github.com/brutella/hap"
 	"github.com/brutella/hap/accessory"
+	haplog "github.com/brutella/hap/log"
 	"github.com/omaxim/tuya-homekit-bridge/tuya"
 )
 
@@ -36,6 +37,9 @@ func main() {
 		return
 	}
 
+	if os.Getenv("THB_DEBUG") != "" {
+		haplog.Debug.Enable() // verbose HomeKit protocol log (pairing, events)
+	}
 	cfg, err := loadConfig(*cfgPath)
 	if err != nil {
 		log.Fatal(err)
@@ -59,6 +63,21 @@ func main() {
 		accs = append(accs, d.buildAccessories()...)
 	}
 
+	var thermo *thermostat
+	if cfg.Thermostat != nil {
+		if err := os.MkdirAll(cfg.Storage, 0o700); err != nil {
+			log.Fatal(err)
+		}
+		thermo = newThermostat(cfg.Thermostat, devs[cfg.Thermostat.Device], cfg.Storage)
+		accs = append(accs, thermo.buildAccessories()...)
+	}
+
+	lights := make([]*light, len(cfg.Lights))
+	for i, lc := range cfg.Lights {
+		lights[i] = newLight(lc)
+		accs = append(accs, lights[i].buildAccessory(uint64(lightAIDBase+i)))
+	}
+
 	server, err := hap.NewServer(hap.NewFsStore(cfg.Storage), bridge.A, accs...)
 	if err != nil {
 		log.Fatal(err)
@@ -74,7 +93,24 @@ func main() {
 	for _, d := range devs {
 		go d.poll(ctx, cfg.PollInterval.Duration)
 	}
-	startWeb(cfg, devs)
+	if thermo != nil {
+		stop := make(chan struct{})
+		go func() { <-ctx.Done(); close(stop) }()
+		go func() {
+			time.Sleep(15 * time.Second) // let devices be found first
+			thermo.evaluate("startup")
+			thermo.run(stop)
+		}()
+		if hs := cfg.Thermostat.HomeKitSensor; hs != nil {
+			go newHomeKitSensor(*hs, thermo.SetTemperature).run(ctx)
+		}
+	}
+	lightStop := make(chan struct{})
+	go func() { <-ctx.Done(); close(lightStop) }()
+	for _, l := range lights {
+		go l.poll(lightStop, cfg.PollInterval.Duration)
+	}
+	startWeb(cfg, devs, thermo, lights)
 
 	log.Printf("tuya-homekit-bridge %s: %q with %d accessories, setup code %s-%s-%s",
 		version, cfg.Name, len(accs), cfg.Pin[:3], cfg.Pin[3:5], cfg.Pin[5:])

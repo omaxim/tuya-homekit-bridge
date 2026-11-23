@@ -23,6 +23,14 @@ Tuya device you can describe as switches and temperature sensors.
 - **Small and portable** – one static Go binary (~2.4 MB compressed), runs on macOS,
   Linux, Raspberry Pi and OpenWrt routers. An OpenWrt recipe that runs the bridge from
   RAM on routers with only 8 MB of flash is included.
+- **Thermostat (optional)** – regulates a device in stages (off / heat / boost) from a
+  room temperature read directly from a HomePod's sensor (the bridge pairs with it as
+  a limited HomeKit controller, see [docs/homepod-sensor.md](docs/homepod-sensor.md))
+  or pushed over HTTP. Real thermostat with a slider in the Home app, failsafe when the temperature
+  stops arriving, see [docs/homepod-thermostat.md](docs/homepod-thermostat.md).
+- **Xiaomi / Yeelight bulbs (optional)** – bulbs paired in Mi Home are controlled locally
+  over the miIO protocol (on/off, brightness, white temperature, colour), see
+  [docs/xiaomi-lights.md](docs/xiaomi-lights.md).
 - **Local web UI (optional)** – a password‑protected page with on/off buttons for
   colleagues or family members without Apple devices, see [docs/web-ui.md](docs/web-ui.md).
 - **Multiple accessories per device, multiple devices per bridge.**
@@ -96,8 +104,10 @@ DP of your device does.
 
 ## Recipes
 
-- [Room thermostat with a HomePod sensor](docs/homepod-thermostat.md) – staged
-  off/low/high control of a heater using Home app automations.
+- [Room thermostat with a HomePod sensor](docs/homepod-thermostat.md) – the bridge
+  regulates off/low/high from the room temperature (or simple threshold automations).
+- [Read the HomePod temperature sensor directly](docs/homepod-sensor.md) – one‑time
+  pairing from an encrypted iPhone backup (`tools/hapkeys`, `cmd/hap-pair`).
 - [Run on an OpenWrt router](docs/openwrt.md) – including 8 MB flash devices
   (bridge downloaded to RAM at boot, verified by SHA‑256), WireGuard for remote admin.
 - [Run as a service on Linux / Raspberry Pi / macOS](docs/running-as-a-service.md).
