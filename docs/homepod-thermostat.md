@@ -1,19 +1,24 @@
 # Room thermostat with a HomePod temperature sensor
 
-HomePod mini and HomePod (2nd gen) have a temperature sensor, but HomeKit does not let
-third‑party software read it. There are two ways to use it:
+HomePod mini and HomePod (2nd gen) have a temperature sensor. There are two ways to use it:
 
-1. **Thermostat mode (recommended)** – a Home automation running on the HomePod
-   periodically sends the temperature to the bridge, and the bridge regulates the
-   device itself. You get a real thermostat with a slider in the Home app and in the
-   web UI, for everyone.
+1. **Thermostat mode (recommended)** – the bridge regulates the device itself from the
+   room temperature. You get a real thermostat with a slider in the Home app and in
+   the web UI, for everyone. The temperature comes either
+   - **directly from the HomePod** (`homekit_sensor`, recommended) – the bridge has its
+     own limited HomeKit pairing with the sensor and reads it every minute, see
+     [homepod-sensor.md](homepod-sensor.md); or
+   - **pushed over HTTP** (`token`) – e.g. by a Home automation on the HomePod (below).
+     Note that on HomePod software 27.x such automations often send an empty or wrong
+     value.
 2. **Threshold automations** – no bridge changes; Home automations switch the device on
    and off at fixed thresholds (see the end of this page).
 
 ## 1. Thermostat mode
 
 ```
-HomePod sensor ──(Home automation, every 5 min, runs on the HomePod)──► GET /api/temperature
+HomePod sensor ──(homekit_sensor: read every minute by the bridge)────────┐
+HomePod sensor ──(or: Home automation, every 5 min)──► GET /api/temperature
                                                                          │
                          tuya-homekit-bridge: off / heat / boost  ◄──────┘
                                    │
@@ -22,7 +27,8 @@ HomePod sensor ──(Home automation, every 5 min, runs on the HomePod)──�
 
 ### Bridge configuration
 
-Requires the [web UI](web-ui.md) (the temperature endpoint lives there).
+With the HTTP push the [web UI](web-ui.md) is required (the temperature endpoint lives
+there). For `homekit_sensor` see [homepod-sensor.md](homepod-sensor.md).
 
 ```json
 "thermostat": {
@@ -50,7 +56,8 @@ Requires the [web UI](web-ui.md) (the temperature endpoint lives there).
 | `hysteresis` | 0.3 | °C above/below the target before switching, prevents rapid cycling. |
 | `boost_below` | 1.0 | Use the `boost` stage when the room is this far below the target. |
 | `max_age` | 20m | **Failsafe:** if no temperature arrived for this long, the device is switched off. |
-| `token` | – | Secret for `/api/temperature` (≥ 12 characters). |
+| `homekit_sensor` | – | Read the temperature from a HomeKit accessory, see [homepod-sensor.md](homepod-sensor.md). |
+| `token` | – | Secret for `/api/temperature` (≥ 12 characters). Required unless `homekit_sensor` is set. |
 | `off` / `heat` / `boost` | – | DPs written for each stage (`then` = second write, see `on_then`). `boost` is optional. |
 | `trigger` | – | Adds a motion sensor that "detects motion" every `interval`, used to start the Home automation periodically. |
 
@@ -68,7 +75,7 @@ switch accessories any more – leave `"accessories": []` on the device (see
 The thermostat and the trigger use fixed HomeKit accessory IDs (100 and 101), so adding
 or removing switch accessories later does not confuse the Home app.
 
-### Home automation (runs on the HomePod)
+### Home automation (only for the HTTP push)
 
 1. Home app → **Automation → +** → **A Sensor Detects Something** → pick the
    *Thermostat trigger* motion sensor → **Detects Motion**.
