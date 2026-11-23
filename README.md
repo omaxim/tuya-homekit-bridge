@@ -27,6 +27,9 @@ Tuya device you can describe as switches and temperature sensors.
   room temperature pushed over HTTP, e.g. by a Home automation that reads a HomePod's
   sensor. Real thermostat with a slider in the Home app, failsafe when the temperature
   stops arriving, see [docs/homepod-thermostat.md](docs/homepod-thermostat.md).
+- **Xiaomi / Yeelight bulbs (optional)** – bulbs paired in Mi Home are controlled locally
+  over the miIO protocol (on/off, brightness, white temperature, colour), see
+  [docs/xiaomi-lights.md](docs/xiaomi-lights.md).
 - **Local web UI (optional)** – a password‑protected page with on/off buttons for
   colleagues or family members without Apple devices, see [docs/web-ui.md](docs/web-ui.md).
 - **Multiple accessories per device, multiple devices per bridge.**

@@ -34,6 +34,7 @@ type webServer struct {
 	name   string
 	devs   []*device
 	thermo *thermostat
+	lights []*light
 
 	mu       sync.Mutex
 	sessions map[string]time.Time
@@ -46,14 +47,14 @@ type webServer struct {
 const sessionCookie = "thb_session"
 const sessionTTL = 30 * 24 * time.Hour
 
-func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
+func startWeb(cfg *Config, devs []*device, thermo *thermostat, lights []*light) {
 	if cfg.Web == nil || cfg.Web.Listen == "" {
 		if thermo != nil {
 			log.Printf("thermostat: no \"web\" config, so the temperature endpoint is not available")
 		}
 		return
 	}
-	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, thermo: thermo,
+	w := &webServer{cfg: cfg.Web, name: cfg.Name, devs: devs, thermo: thermo, lights: lights,
 		sessions: map[string]time.Time{}, subs: map[chan []byte]struct{}{}}
 	// Push state to open pages whenever something changes.
 	for _, d := range devs {
@@ -61,6 +62,9 @@ func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
 	}
 	if thermo != nil {
 		thermo.onChange(w.publish)
+	}
+	for _, l := range lights {
+		l.onChange(w.publish)
 	}
 	if w.cfg.Title == "" {
 		w.cfg.Title = cfg.Name
@@ -71,6 +75,7 @@ func startWeb(cfg *Config, devs []*device, thermo *thermostat) {
 	mux.HandleFunc("/logout", w.logout)
 	mux.HandleFunc("/api/state", w.auth(w.apiState))
 	mux.HandleFunc("/api/events", w.auth(w.apiEvents))
+	mux.HandleFunc("/api/light", w.auth(w.apiLight))
 	mux.HandleFunc("/api/switch", w.auth(w.apiSwitch))
 	if thermo != nil {
 		mux.HandleFunc("/api/temperature", thermo.handleTemperature) // token auth, for automations
@@ -222,6 +227,13 @@ func (w *webServer) stateJSON() []byte {
 	if w.thermo != nil {
 		out["thermostat"] = w.thermo.snapshot()
 	}
+	if len(w.lights) > 0 {
+		ls := make([]lightJSON, len(w.lights))
+		for i, l := range w.lights {
+			ls[i] = l.json(i)
+		}
+		out["lights"] = ls
+	}
 	b, _ := json.Marshal(out)
 	return b
 }
@@ -329,6 +341,46 @@ func (w *webServer) apiSwitch(rw http.ResponseWriter, r *http.Request) {
 		d.set(a.On, a.OnThen)
 	} else {
 		d.set(a.Off, a.OffThen)
+	}
+	w.apiState(rw, r)
+}
+
+func (w *webServer) apiLight(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	i, err := strconv.Atoi(r.FormValue("index"))
+	if err != nil || i < 0 || i >= len(w.lights) {
+		http.Error(rw, "bad index", http.StatusBadRequest)
+		return
+	}
+	l := w.lights[i]
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	num := func(k string) (int, bool) { v, err := strconv.Atoi(r.FormValue(k)); return v, err == nil }
+	var opErr error
+	switch {
+	case r.FormValue("on") != "":
+		log.Printf("web UI: %s turned %q %s", host, l.cfg.Name, map[bool]string{true: "on", false: "off"}[r.FormValue("on") == "true"])
+		opErr = l.SetOn(r.FormValue("on") == "true")
+	case r.FormValue("brightness") != "":
+		if v, ok := num("brightness"); ok {
+			opErr = l.SetBrightness(v)
+		}
+	case r.FormValue("ct") != "":
+		if v, ok := num("ct"); ok {
+			opErr = l.SetCT(v)
+		}
+	case r.FormValue("hue") != "":
+		h, ok1 := num("hue")
+		sat, ok2 := num("sat")
+		if ok1 && ok2 {
+			opErr = l.SetHSV(h, sat)
+		}
+	}
+	if opErr != nil {
+		http.Error(rw, opErr.Error(), http.StatusBadGateway)
+		return
 	}
 	w.apiState(rw, r)
 }

@@ -60,6 +60,28 @@ h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:8px 0 2px}
 .tile b{font-size:15px;line-height:1.2}
 .tile small{font-size:13px;color:var(--muted)}
 .tile.on small{color:#7a5a3a}
+.lightcard{padding:16px 18px;margin-bottom:16px;display:grid;gap:14px}
+.lhead{display:flex;align-items:center;gap:12px}
+.lhead .icon{flex:none}
+.lhead.on .icon{background:#ffd43b;color:#5c4400}
+.lname{flex:1;min-width:0}
+.lname b{display:block}
+.lname small{color:var(--muted);font-size:13px}
+.switch{position:relative;width:52px;height:32px;border-radius:16px;border:0;background:var(--seg);cursor:pointer;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch.on{background:#34c759}
+.switch.on::after{transform:translateX(20px)}
+.slider{display:grid;gap:6px}
+.slider label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slider input{width:100%;-webkit-appearance:none;appearance:none;height:30px;border-radius:15px;background:var(--seg);outline:none}
+.slider input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.slider input::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.slider input.bright{background:linear-gradient(90deg,#3a332b,#ffd43b)}
+.slider input.ct{background:linear-gradient(90deg,#ff9b3d,#ffe7c2,#dbe9ff)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.swatch.sel{border-color:var(--fg)}
+.lightcard.off .slider,.lightcard.off .swatches{opacity:.45}
 .login{padding:20px}
 .login input{font:inherit;width:100%;padding:13px 14px;border:0;border-radius:12px;background:var(--seg);color:var(--fg);margin:8px 0 14px;outline:none}
 .primary{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-weight:600;background:var(--heat);color:#fff;cursor:pointer}
@@ -84,6 +106,7 @@ h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:8px 0 2px}
 {{else}}
 <p class="sub" id="sub">&nbsp;</p>
 <section id="thermo"></section>
+<section id="lights"></section>
 <section class="tiles" id="tiles"></section>
 <div class="foot"><span><span class="dot off" id="live"></span><span data-t="lanOnly"></span></span>{{if .HasPass}}<a href="/logout" data-t="logout"></a>{{end}}</div>
 {{end}}
@@ -93,11 +116,13 @@ const T = {
   en: {loginHint:"Enter the password to control the devices.", password:"Password", wrong:"Wrong password.", login:"Log in",
        on:"On", off:"Off", offline:"Not responding", lanOnly:"Local network only", logout:"Log out",
        failed:"Could not change the device. Try again.", thermostat:"Thermostat", room:"Room",
+       brightness:"Brightness", white:"White", color:"Colour", warm:"warm", cold:"cold",
        heatingTo:"Heating to", boostTo:"Full power to", idle:"Idle", modeOff:"Off", heat:"Heat", now:"Now",
        noTemp:"No room temperature received – heating is off for safety.", tempAge:"Room temperature from", minAgo:"min ago", justNow:"just now"},
   cs: {loginHint:"Pro ovládání zadej heslo.", password:"Heslo", wrong:"Špatné heslo.", login:"Přihlásit",
        on:"Zapnuto", off:"Vypnuto", offline:"Neodpovídá", lanOnly:"Jen v místní síti", logout:"Odhlásit",
        failed:"Zařízení se nepodařilo přepnout. Zkus to znovu.", thermostat:"Termostat", room:"Místnost",
+       brightness:"Jas", white:"Bílá", color:"Barva", warm:"teplá", cold:"studená",
        heatingTo:"Topí na", boostTo:"Naplno na", idle:"Netopí", modeOff:"Vypnuto", heat:"Topení", now:"Teď",
        noTemp:"Nepřišla teplota z místnosti – topení je z bezpečnostních důvodů vypnuté.", tempAge:"Teplota z místnosti", minAgo:"min zpět", justNow:"právě teď"}
 }[document.documentElement.lang] || null;
@@ -180,6 +205,50 @@ function attachDrag(svg, th) {
   };
 }
 
+
+/* ---------- lights ---------- */
+const bulb = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/></svg>`;
+const SWATCHES = [[0,100],[30,100],[55,100],[120,80],[180,70],[220,90],[275,70],[320,70]];
+let sliding = false;
+function renderLights(ls) {
+  const box = $("lights");
+  box.replaceChildren();
+  for (const l of ls || []) {
+    const card = el("div", "glass lightcard" + (l.on ? "" : " off"));
+    const head = el("div", "lhead" + (l.on ? " on" : ""));
+    const icon = el("div", "icon"); icon.innerHTML = bulb;
+    const nm = el("div", "lname"); nm.append(el("b", "", l.name), el("small", "", !l.online ? t("offline") : l.on ? l.brightness + " %" : t("off")));
+    const sw = el("button", "switch" + (l.on ? " on" : "")); sw.setAttribute("aria-label", l.name); sw.setAttribute("aria-pressed", l.on);
+    sw.disabled = busy || !l.online;
+    sw.onclick = () => send("/api/light", {index: l.index, on: !l.on});
+    head.append(icon, nm, sw);
+    card.append(head);
+    const slider = (cls, label, min, max, val, fmt, key) => {
+      const w = el("div", "slider");
+      const lab = el("label"); const v = el("span", "", fmt(val)); lab.append(el("span", "", label), v);
+      const inp = document.createElement("input"); inp.type = "range"; inp.min = min; inp.max = max; inp.value = val; inp.className = cls;
+      inp.setAttribute("aria-label", label); inp.disabled = !l.online;
+      inp.oninput = () => { sliding = true; v.textContent = fmt(+inp.value); };
+      inp.onchange = () => { sliding = false; send("/api/light", {index: l.index, [key]: inp.value}); };
+      w.append(lab, inp); return w;
+    };
+    card.append(slider("bright", t("brightness"), 1, 100, l.brightness || 1, v => v + " %", "brightness"));
+    card.append(slider("ct", t("white"), 1700, 6500, l.ct || 4000, v => v + " K", "ct"));
+    if (l.color) {
+      const sws = el("div", "swatches");
+      for (const [h, sat] of SWATCHES) {
+        const b = el("button", "swatch" + (l.mode === "color" && Math.abs(l.hue - h) < 8 && Math.abs(l.sat - sat) < 10 ? " sel" : ""));
+        b.style.background = `hsl(${h} ${sat}% 55%)`; b.setAttribute("aria-label", t("color") + " " + h);
+        b.disabled = !l.online;
+        b.onclick = () => send("/api/light", {index: l.index, hue: h, sat});
+        sws.append(b);
+      }
+      card.append(sws);
+    }
+    box.append(card);
+  }
+}
+
 /* ---------- switch tiles ---------- */
 const flame = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 3.2-1.4 5-3 6.8C7.4 10.6 6 12.4 6 15a6 6 0 0 0 12 0c0-2.3-1-4.2-2.4-5.6.1 1.5-.4 2.7-1.6 3.3.4-3.6-.8-7.6-2-10.7z"/></svg>`;
 const thermoIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0zM12 20a2 2 0 0 1-1-3.7V9h2v7.3A2 2 0 0 1 12 20z"/></svg>`;
@@ -205,6 +274,7 @@ function renderTiles(items) {
 function render() {
   if (!data) return;
   if (data.thermostat) renderThermo(data.thermostat); else $("thermo").replaceChildren();
+  renderLights(data.lights);
   renderTiles(data.accessories || []);
   const th = data.thermostat;
   $("sub").textContent = th && th.temperature != null
@@ -226,17 +296,17 @@ async function send(url, params) {
 /* ---------- live updates (Server-Sent Events, polling fallback) ---------- */
 function setLive(on) { const d = $("live"); if (d) d.className = "dot" + (on ? "" : " off"); }
 async function poll() {
-  try { const r = await fetch("/api/state", {cache: "no-store"}); if (r.status === 401) return location.reload(); if (r.ok) { data = await r.json(); if (dragTarget == null && !busy) render(); } } catch (e) {}
+  try { const r = await fetch("/api/state", {cache: "no-store"}); if (r.status === 401) return location.reload(); if (r.ok) { data = await r.json(); if (dragTarget == null && !busy && !sliding) render(); } } catch (e) {}
 }
 function connect() {
   if (!window.EventSource) { setInterval(poll, 5000); poll(); return; }
   const es = new EventSource("/api/events");
-  es.onmessage = ev => { data = JSON.parse(ev.data); setLive(true); if (dragTarget == null && !busy) render(); };
+  es.onmessage = ev => { data = JSON.parse(ev.data); setLive(true); if (dragTarget == null && !busy && !sliding) render(); };
   es.onerror = () => { setLive(false); poll(); };
 }
 if ($("tiles")) {
   connect();
-  setInterval(() => { if (data && data.thermostat && data.thermostat.temperature_age_s != null) { data.thermostat.temperature_age_s += 30; if (dragTarget == null && !busy) render(); } }, 30000);
+  setInterval(() => { if (data && data.thermostat && data.thermostat.temperature_age_s != null) { data.thermostat.temperature_age_s += 30; if (dragTarget == null && !busy && !sliding) render(); } }, 30000);
 }
 </script>
 </body>

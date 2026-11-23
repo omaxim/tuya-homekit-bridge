@@ -15,6 +15,7 @@ import (
 
 	"github.com/brutella/hap"
 	"github.com/brutella/hap/accessory"
+	haplog "github.com/brutella/hap/log"
 	"github.com/omaxim/tuya-homekit-bridge/tuya"
 )
 
@@ -36,6 +37,9 @@ func main() {
 		return
 	}
 
+	if os.Getenv("THB_DEBUG") != "" {
+		haplog.Debug.Enable() // verbose HomeKit protocol log (pairing, events)
+	}
 	cfg, err := loadConfig(*cfgPath)
 	if err != nil {
 		log.Fatal(err)
@@ -68,6 +72,12 @@ func main() {
 		accs = append(accs, thermo.buildAccessories()...)
 	}
 
+	lights := make([]*light, len(cfg.Lights))
+	for i, lc := range cfg.Lights {
+		lights[i] = newLight(lc)
+		accs = append(accs, lights[i].buildAccessory(uint64(lightAIDBase+i)))
+	}
+
 	server, err := hap.NewServer(hap.NewFsStore(cfg.Storage), bridge.A, accs...)
 	if err != nil {
 		log.Fatal(err)
@@ -92,7 +102,12 @@ func main() {
 			thermo.run(stop)
 		}()
 	}
-	startWeb(cfg, devs, thermo)
+	lightStop := make(chan struct{})
+	go func() { <-ctx.Done(); close(lightStop) }()
+	for _, l := range lights {
+		go l.poll(lightStop, cfg.PollInterval.Duration)
+	}
+	startWeb(cfg, devs, thermo, lights)
 
 	log.Printf("tuya-homekit-bridge %s: %q with %d accessories, setup code %s-%s-%s",
 		version, cfg.Name, len(accs), cfg.Pin[:3], cfg.Pin[3:5], cfg.Pin[5:])

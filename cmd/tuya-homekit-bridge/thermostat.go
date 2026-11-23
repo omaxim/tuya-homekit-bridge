@@ -364,6 +364,7 @@ func (t *thermostat) buildAccessories() []*accessory.A {
 			tk := time.NewTicker(tc.Interval.Duration)
 			defer tk.Stop()
 			for range tk.C {
+				log.Printf("thermostat: trigger %q fired", tc.Name)
 				m.MotionSensor.MotionDetected.SetValue(true)
 				time.Sleep(10 * time.Second)
 				m.MotionSensor.MotionDetected.SetValue(false)
@@ -396,11 +397,13 @@ func parseTemperature(s string) (float64, error) {
 // (value may also be sent as the request body). Token-authenticated so that a
 // Home automation can call it without a browser session.
 func (t *thermostat) handleTemperature(rw http.ResponseWriter, r *http.Request) {
+	log.Printf("thermostat: %s %s from %s (value=%q)", r.Method, r.URL.Path, r.RemoteAddr, r.FormValue("value"))
 	tok := r.Header.Get("X-Token")
 	if tok == "" {
 		tok = r.FormValue("token")
 	}
 	if subtle.ConstantTimeCompare([]byte(tok), []byte(t.cfg.Token)) != 1 {
+		log.Printf("thermostat: rejected temperature from %s: wrong token", r.RemoteAddr)
 		time.Sleep(time.Second)
 		http.Error(rw, "unauthorized", http.StatusUnauthorized)
 		return
@@ -413,9 +416,11 @@ func (t *thermostat) handleTemperature(rw http.ResponseWriter, r *http.Request) 
 	}
 	v, err := parseTemperature(raw)
 	if err != nil {
+		log.Printf("thermostat: rejected temperature from %s: %v", r.RemoteAddr, err)
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
+	log.Printf("thermostat: received %.1f °C from %s", v, r.RemoteAddr)
 	t.SetTemperature(v)
 	rw.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(rw, "ok %.1f\n", v)

@@ -19,6 +19,7 @@ type Config struct {
 	Interfaces   []string          `json:"interfaces"`    // optional: network interfaces to advertise on
 	Web          *WebConfig        `json:"web"`           // optional local web UI
 	Thermostat   *ThermostatConfig `json:"thermostat"`    // optional thermostat fed by an external temperature
+	Lights       []LightConfig     `json:"lights"`        // optional Xiaomi/Yeelight bulbs (miIO)
 	Devices      []Device          `json:"devices"`
 }
 
@@ -98,8 +99,13 @@ func loadConfig(path string) (*Config, error) {
 	if len(c.Pin) != 8 {
 		return nil, errors.New("pin must be 8 digits, e.g. \"12345678\" (entered in the Home app as 123-45-678)")
 	}
-	if len(c.Devices) == 0 {
-		return nil, errors.New("no devices configured")
+	if len(c.Devices) == 0 && len(c.Lights) == 0 {
+		return nil, errors.New("no devices or lights configured")
+	}
+	for i := range c.Lights {
+		if err := c.Lights[i].validate(); err != nil {
+			return nil, err
+		}
 	}
 	for i, d := range c.Devices {
 		if d.ID == "" || len(d.LocalKey) != 16 {
