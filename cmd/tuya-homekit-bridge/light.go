@@ -171,6 +171,8 @@ func (l *light) buildAccessory(aid uint64) *accessory.A {
 	ct := characteristic.NewColorTemperature()
 	ct.SetMinValue(154) // 6500 K
 	ct.SetMaxValue(500) // 2000 K
+	ct.SetValue(250)    // valid start value (the library default 140 is below our minimum)
+	s.Brightness.SetValue(100)
 	s.AddC(ct.C)
 
 	s.On.OnValueRemoteUpdate(func(on bool) { l.SetOn(on) })
